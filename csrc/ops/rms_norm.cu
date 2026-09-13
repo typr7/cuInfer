@@ -9,7 +9,7 @@
 #include "ops/utils.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 namespace

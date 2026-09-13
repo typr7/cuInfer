@@ -12,7 +12,7 @@
 #include "ops/unified_kv_cache_update.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 CausalLM::CausalLM(const ModelConfig& config, ModelWeights&& weights)

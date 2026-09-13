@@ -4,7 +4,7 @@
 #include "scheduler/kv_cache_manager.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 KVCacheManager::KVCacheManager(const KVCacheConfig& cfg)

@@ -2,7 +2,7 @@
 #include "cuda/cuda_utils.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 CudaContext::CudaContext()

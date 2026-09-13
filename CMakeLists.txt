@@ -6,7 +6,7 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES 89 CACHE STRING "CUDA architectures to build for")
 endif()
 
-project(cllm LANGUAGES CXX CUDA)
+project(cuinfer LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,7 +19,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies.cmake)
 
-add_library(cllm_core STATIC
+add_library(cuinfer_core STATIC
     csrc/common/logger.cpp
 
     csrc/cuda/cuda_context.cpp
@@ -56,16 +56,16 @@ add_library(cllm_core STATIC
     csrc/ops/unified_kv_cache_update.cu
 )
 
-set_target_properties(cllm_core PROPERTIES
+set_target_properties(cuinfer_core PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-target_include_directories(cllm_core
+target_include_directories(cuinfer_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/csrc
 )
 
-target_link_libraries(cllm_core
+target_link_libraries(cuinfer_core
     PUBLIC
         msgpack-cxx
     PRIVATE
@@ -78,20 +78,20 @@ target_link_libraries(cllm_core
 
 # Build the Python extension as _C.so. The Python interpreter is responsible
 # for spawning the EngineCore process; a separate C++ executable is not needed.
-pybind11_add_module(cllm_pybind MODULE
+pybind11_add_module(cuinfer_pybind MODULE
     csrc/bindings/py_binding.cpp
 )
 
-target_link_libraries(cllm_pybind
+target_link_libraries(cuinfer_pybind
     PRIVATE
-        cllm_core
+        cuinfer_core
 )
 
-set_target_properties(cllm_pybind PROPERTIES
+set_target_properties(cuinfer_pybind PROPERTIES
     OUTPUT_NAME "_C"
 )
 
 install(
-    TARGETS cllm_pybind
-    LIBRARY DESTINATION cllm
+    TARGETS cuinfer_pybind
+    LIBRARY DESTINATION cuinfer
 )

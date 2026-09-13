@@ -5,7 +5,7 @@
 #include "model/rope_cache.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 RopeCache RopeCache::create(const ModelConfig &config)

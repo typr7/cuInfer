@@ -6,8 +6,8 @@ from pathlib import Path
 import msgpack
 import zmq
 
-from cllm.engine import EngineConfig
-from cllm.protocol import FinishReason, OutputType, RequestType
+from cuinfer.engine import EngineConfig
+from cuinfer.protocol import FinishReason, OutputType, RequestType
 
 
 def run_fake_engine(

@@ -4,7 +4,7 @@
 #include <string_view>
 
 
-namespace cllm
+namespace cuinfer
 {
 
 enum class LogLevel

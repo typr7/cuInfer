@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 
 
-namespace cllm
+namespace cuinfer
 {
 
 // The stream and the cuBLAS handle bound to it, as one RAII unit.

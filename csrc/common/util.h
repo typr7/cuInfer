@@ -4,7 +4,7 @@
 #include <bit>
 
 
-namespace cllm
+namespace cuinfer
 {
 
 template <std::size_t kAlignment>

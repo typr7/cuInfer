@@ -3,7 +3,7 @@
 #include "executor/kv_cache.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 // kv cache pool shape: [num_hidden_layers, 2, num_blocks, block_size, num_kv_heads, head_dim]

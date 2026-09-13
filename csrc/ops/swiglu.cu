@@ -6,7 +6,7 @@
 #include "cuda/cuda_utils.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 namespace

@@ -8,8 +8,8 @@ import anyio
 import pytest
 import pytest_asyncio
 
-from cllm.engine import EngineClient, EngineConfig, EngineDied
-from cllm.protocol import FinishReason
+from cuinfer.engine import EngineClient, EngineConfig, EngineDied
+from cuinfer.protocol import FinishReason
 from tests.fake_engine import run_fake_engine
 
 

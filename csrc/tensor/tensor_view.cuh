@@ -10,7 +10,7 @@
 #include "tensor/tensor.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 namespace

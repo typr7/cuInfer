@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace cllm
+namespace cuinfer
 {
 
 struct SampleParams;

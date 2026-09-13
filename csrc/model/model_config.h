@@ -7,7 +7,7 @@
 #include "tensor/data_type.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 enum class ModelArch

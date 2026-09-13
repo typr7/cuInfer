@@ -8,42 +8,42 @@ PYBIND11_MODULE(_C, module)
 {
     namespace py = pybind11;
 
-    py::class_<cllm::Config>(module, "Config")
+    py::class_<cuinfer::Config>(module, "Config")
         .def(py::init<>())
-        .def_readwrite("model_path", &cllm::Config::model_path)
-        .def_readwrite("gpu_memory_utilization", &cllm::Config::gpu_memory_utilization)
-        .def_readwrite("block_size", &cllm::Config::block_size)
-        .def_readwrite("max_num_scheduled_tokens", &cllm::Config::max_num_scheduled_tokens)
-        .def_readwrite("max_num_seqs", &cllm::Config::max_num_seqs);
+        .def_readwrite("model_path", &cuinfer::Config::model_path)
+        .def_readwrite("gpu_memory_utilization", &cuinfer::Config::gpu_memory_utilization)
+        .def_readwrite("block_size", &cuinfer::Config::block_size)
+        .def_readwrite("max_num_scheduled_tokens", &cuinfer::Config::max_num_scheduled_tokens)
+        .def_readwrite("max_num_seqs", &cuinfer::Config::max_num_seqs);
 
-    py::class_<cllm::Addresses>(module, "EngineCoreAddresses")
+    py::class_<cuinfer::Addresses>(module, "EngineCoreAddresses")
         .def(py::init<>())
-        .def_readwrite("input_address", &cllm::Addresses::input_address)
-        .def_readwrite("output_address", &cllm::Addresses::output_address);
+        .def_readwrite("input_address", &cuinfer::Addresses::input_address)
+        .def_readwrite("output_address", &cuinfer::Addresses::output_address);
 
     // Also expose the wire protocol tags so Python/C++ contract tests can
     // verify the values mirrored by the parent process.
-    py::enum_<cllm::RequestType>(module, "RequestType")
-        .value("ADD", cllm::RequestType::kAdd)
-        .value("ABORT", cllm::RequestType::kAbort)
-        .value("SHUTDOWN", cllm::RequestType::kShutdown);
+    py::enum_<cuinfer::RequestType>(module, "RequestType")
+        .value("ADD", cuinfer::RequestType::kAdd)
+        .value("ABORT", cuinfer::RequestType::kAbort)
+        .value("SHUTDOWN", cuinfer::RequestType::kShutdown);
 
-    py::enum_<cllm::OutputType>(module, "OutputType")
-        .value("READY", cllm::OutputType::kReady)
-        .value("OUTPUTS", cllm::OutputType::kOutputs);
+    py::enum_<cuinfer::OutputType>(module, "OutputType")
+        .value("READY", cuinfer::OutputType::kReady)
+        .value("OUTPUTS", cuinfer::OutputType::kOutputs);
 
-    py::enum_<cllm::FinishReason>(module, "FinishReason")
-        .value("RUNNING", cllm::FinishReason::kRunning)
-        .value("STOP", cllm::FinishReason::kStop)
-        .value("LENGTH", cllm::FinishReason::kLength);
+    py::enum_<cuinfer::FinishReason>(module, "FinishReason")
+        .value("RUNNING", cuinfer::FinishReason::kRunning)
+        .value("STOP", cuinfer::FinishReason::kStop)
+        .value("LENGTH", cuinfer::FinishReason::kLength);
 
-    py::enum_<cllm::EngineCoreShutdownReason>(module, "EngineCoreShutdownReason")
-        .value("SHUTDOWN", cllm::EngineCoreShutdownReason::kShutdown)
-        .value("ENGINE_CORE_DEAD", cllm::EngineCoreShutdownReason::kEngineCoreDead);
+    py::enum_<cuinfer::EngineCoreShutdownReason>(module, "EngineCoreShutdownReason")
+        .value("SHUTDOWN", cuinfer::EngineCoreShutdownReason::kShutdown)
+        .value("ENGINE_CORE_DEAD", cuinfer::EngineCoreShutdownReason::kEngineCoreDead);
 
     module.def(
         "run_engine_core",
-        &cllm::run_engine_core,
+        &cuinfer::run_engine_core,
         py::call_guard<py::gil_scoped_release>(),
         py::arg("config"),
         py::arg("addresses")

@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from cllm.protocol import FinishReason
-from cllm.tokenizer import IncrementalDetokenizer, load_model
+from cuinfer.protocol import FinishReason
+from cuinfer.tokenizer import IncrementalDetokenizer, load_model
 
 
 class ByteTokenizer:
@@ -71,7 +71,7 @@ def model_directory(tmp_path):
 @pytest.fixture
 def tokenizer_loader(monkeypatch):
     loader = Mock(return_value=ByteTokenizer())
-    monkeypatch.setattr("cllm.tokenizer.AutoTokenizer.from_pretrained", loader)
+    monkeypatch.setattr("cuinfer.tokenizer.AutoTokenizer.from_pretrained", loader)
     return loader
 
 
@@ -97,7 +97,7 @@ def test_download_model_uses_only_runtime_files(
     model_directory, tokenizer_loader, monkeypatch
 ):
     download = Mock(return_value=str(model_directory))
-    monkeypatch.setattr("cllm.tokenizer.snapshot_download", download)
+    monkeypatch.setattr("cuinfer.tokenizer.snapshot_download", download)
     info, _ = load_model("organization/tiny-model")
     assert info.name == "organization/tiny-model"
     assert info.eos_token_ids == [256]

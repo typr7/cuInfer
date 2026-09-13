@@ -4,7 +4,7 @@
 #include "ops/sampler.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 Sampler::Sampler(int max_num_seqs, int vocab_size)

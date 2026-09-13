@@ -5,7 +5,7 @@
 #include "tensor/tensor.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 void rope(

@@ -5,7 +5,7 @@
 build/
 models/
 AGENTS.md
-cllm/_C*.so
+cuinfer/_C*.so
 __pycache__/
 .pytest_cache/
 *.egg-info/

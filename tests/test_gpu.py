@@ -4,14 +4,14 @@ from pathlib import Path
 import httpx
 import pytest
 
-from cllm.engine import EngineClient, EngineConfig
-from cllm.server import create_app
-from cllm.tokenizer import load_model
+from cuinfer.engine import EngineClient, EngineConfig
+from cuinfer.server import create_app
+from cuinfer.tokenizer import load_model
 
 
 @pytest.mark.gpu
 async def test_real_engine_chat_completion():
-    pytest.importorskip("cllm._C", exc_type=ImportError)
+    pytest.importorskip("cuinfer._C", exc_type=ImportError)
     model_path = Path(__file__).resolve().parents[1] / "models" / "qwen3-0.6b"
     if not model_path.is_dir():
         pytest.skip("local Qwen3-0.6B model is unavailable")

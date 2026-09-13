@@ -9,7 +9,7 @@
 #include "cuda/cuda_context.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 class BatchBuffer

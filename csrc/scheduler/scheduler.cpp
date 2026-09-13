@@ -5,7 +5,7 @@
 #include "scheduler/scheduler.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 Scheduler::Scheduler(

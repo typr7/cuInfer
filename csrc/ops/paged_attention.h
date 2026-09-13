@@ -6,7 +6,7 @@
 #include "tensor/tensor.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 // BF16, head_dim 64/128, power-of-two pages. Call after updating the KV cache.

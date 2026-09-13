@@ -13,7 +13,7 @@ import msgpack
 import zmq
 import zmq.asyncio
 
-from cllm.protocol import FinishReason, OutputType, RequestType
+from cuinfer.protocol import FinishReason, OutputType, RequestType
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class EngineDied(RuntimeError):
 
 
 def run_engine(config: EngineConfig, input_address: str, output_address: str) -> None:
-    from cllm import _C
+    from cuinfer import _C
 
     cfg = _C.Config()
     for name, value in asdict(config).items():
@@ -51,7 +51,7 @@ def run_engine(config: EngineConfig, input_address: str, output_address: str) ->
 
 class EngineClient:
     def __init__(self, config: EngineConfig, process_target: Callable[..., None]):
-        self._directory = Path(tempfile.mkdtemp(prefix="cllm-"))
+        self._directory = Path(tempfile.mkdtemp(prefix="cuinfer-"))
         input_address = f"ipc://{self._directory / 'input'}"
         output_address = f"ipc://{self._directory / 'output'}"
         self._context = zmq.asyncio.Context()

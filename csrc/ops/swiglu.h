@@ -5,7 +5,7 @@
 #include "tensor/tensor.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 void swiglu(TensorRef<2> gate_up, cudaStream_t stream);

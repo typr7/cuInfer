@@ -5,7 +5,7 @@
 #include "scheduler/request.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 struct ModelInput

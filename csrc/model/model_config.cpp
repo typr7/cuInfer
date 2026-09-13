@@ -6,7 +6,7 @@
 #include "model/model_config.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 // function `from_json` is for parsing json to ModelConfig,

@@ -7,7 +7,7 @@
 #include <cuda_bf16.h>
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 inline constexpr uint32_t kNumThreadsPerWarp = 32;

@@ -6,7 +6,7 @@
 #include "scheduler/sample_params.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 enum class RequestStatus

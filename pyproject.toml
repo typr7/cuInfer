@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "cllm"
+name = "cuinfer"
 version = "0.1.0"
-description = "Python frontend for the nano-vllm.cpp inference engine"
+description = "Python frontend for the cuInfer inference engine"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pyzmq",
@@ -21,7 +21,7 @@ dependencies = [
 dev = ["pytest", "pytest-asyncio", "httpx"]
 
 [tool.setuptools.packages.find]
-include = ["cllm"]
+include = ["cuinfer"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

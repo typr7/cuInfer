@@ -9,7 +9,7 @@
 #include "model/rope_cache.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 class CausalLM

@@ -6,7 +6,7 @@
 #include "tensor/data_type.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 template <int kDim>

@@ -3,7 +3,7 @@
 #include <cstddef>
 
 
-namespace cllm
+namespace cuinfer
 {
 
 class PinnedBuffer

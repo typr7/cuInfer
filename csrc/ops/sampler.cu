@@ -13,7 +13,7 @@
 #include "common/util.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 namespace

@@ -4,9 +4,9 @@ import sys
 
 import uvicorn
 
-from cllm.engine import EngineClient, EngineConfig, EngineDied
-from cllm.server import create_app
-from cllm.tokenizer import load_model
+from cuinfer.engine import EngineClient, EngineConfig, EngineDied
+from cuinfer.server import create_app
+from cuinfer.tokenizer import load_model
 
 
 async def serve(args: argparse.Namespace) -> int:
@@ -43,7 +43,7 @@ async def serve(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="python -m cllm")
+    parser = argparse.ArgumentParser(prog="python -m cuinfer")
     commands = parser.add_subparsers(dest="command", required=True)
     command = commands.add_parser("serve")
     command.add_argument("--model", required=True)

@@ -5,7 +5,7 @@
 #include "ops/utils.h"
 
 
-namespace cllm::ops
+namespace cuinfer::ops
 {
 
 __device__ __forceinline__

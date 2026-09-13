@@ -7,7 +7,7 @@
 
 struct __nv_bfloat16;
 
-namespace cllm
+namespace cuinfer
 {
 
 enum class DataType

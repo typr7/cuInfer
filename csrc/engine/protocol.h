@@ -8,7 +8,7 @@
 #include <msgpack.hpp>
 
 
-namespace cllm
+namespace cuinfer
 {
 
 class ProtocolError: public std::runtime_error
@@ -86,4 +86,4 @@ enum class EngineCoreShutdownReason
 
 }
 
-MSGPACK_ADD_ENUM(cllm::FinishReason);
+MSGPACK_ADD_ENUM(cuinfer::FinishReason);

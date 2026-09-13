@@ -10,7 +10,7 @@
 #include "model/model_config.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 class ModelRunner

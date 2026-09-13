@@ -8,8 +8,8 @@ import pytest
 import pytest_asyncio
 from starlette.requests import ClientDisconnect
 
-from cllm.engine import EngineClient, EngineConfig
-from cllm.server import create_app
+from cuinfer.engine import EngineClient, EngineConfig
+from cuinfer.server import create_app
 from tests.fake_engine import run_fake_engine
 
 

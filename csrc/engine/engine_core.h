@@ -4,7 +4,7 @@
 #include "engine/protocol.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 // export to python via pybind

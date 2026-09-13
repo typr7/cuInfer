@@ -13,9 +13,9 @@ from jinja2 import TemplateError
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.types import Receive, Scope, Send
 
-from cllm.engine import EngineClient, EngineDied
-from cllm.protocol import FinishReason
-from cllm.tokenizer import IncrementalDetokenizer
+from cuinfer.engine import EngineClient, EngineDied
+from cuinfer.protocol import FinishReason
+from cuinfer.tokenizer import IncrementalDetokenizer
 
 
 class CompletionParams(BaseModel):
@@ -118,7 +118,7 @@ def create_app(
     async def models() -> dict:
         require_engine()
         return {"object": "list", "data": [{
-            "id": model_name, "object": "model", "created": 0, "owned_by": "cllm",
+            "id": model_name, "object": "model", "created": 0, "owned_by": "cuinfer",
         }]}
 
     async def complete(body: ChatRequest | TextRequest) -> Response:

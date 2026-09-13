@@ -4,7 +4,7 @@
 #include "executor/model_input.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 ModelInput prepare_model_input(

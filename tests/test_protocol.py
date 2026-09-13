@@ -1,10 +1,10 @@
 import pytest
 
-from cllm.protocol import FinishReason, OutputType, RequestType
+from cuinfer.protocol import FinishReason, OutputType, RequestType
 
 
 def test_native_protocol_values_match_python():
-    native = pytest.importorskip("cllm._C", exc_type=ImportError)
+    native = pytest.importorskip("cuinfer._C", exc_type=ImportError)
 
     assert int(native.RequestType.ADD) == RequestType.ADD
     assert int(native.RequestType.ABORT) == RequestType.ABORT

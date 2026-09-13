@@ -3,7 +3,7 @@
 #include <string>
 
 
-namespace cllm
+namespace cuinfer
 {
 
 struct Config

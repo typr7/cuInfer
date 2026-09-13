@@ -7,7 +7,7 @@
 #include "common/logger.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 namespace
 {

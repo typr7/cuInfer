@@ -4,7 +4,7 @@
 #include "cuda/pinned_buffer.h"
 #include "cuda/cuda_utils.h"
 
-namespace cllm
+namespace cuinfer
 {
 
 PinnedBuffer::PinnedBuffer(std::size_t byte_size)

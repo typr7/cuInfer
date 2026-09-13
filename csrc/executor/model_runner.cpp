@@ -12,7 +12,7 @@
 #include "executor/sampler.h"
 
 
-namespace cllm
+namespace cuinfer
 {
 
 struct ModelRunner::Impl
