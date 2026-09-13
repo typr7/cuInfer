@@ -5,3 +5,10 @@
 build/
 models/
 AGENTS.md
+cllm/_C*.so
+__pycache__/
+.pytest_cache/
+*.egg-info/
+/include/
+/lib/
+/share/
