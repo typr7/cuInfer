@@ -22,14 +22,4 @@ struct Config
     int max_num_seqs = 256;
 };
 
-inline bool validate_config(const Config& config)
-{
-    return (
-        (config.gpu_memory_utilization > 0.f && config.gpu_memory_utilization <= 0.95)
-        && config.block_size > 0
-        && config.max_num_scheduled_tokens > 0
-        && config.max_num_seqs > 0
-    );
-}
-
 }

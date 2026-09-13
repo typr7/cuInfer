@@ -172,9 +172,19 @@ private:
 EngineCoreShutdownReason run_engine_core(const Config& config, const Addresses& addresses)
 {
     try {
-        if (!validate_config(config)) {
-            throw std::invalid_argument("invalid engine core config");
-        }
+        Logger::info(std::format(
+            "EngineCore started with config:\n"
+                "\tmodel_path={}\n"
+                "\tgpu_memory_utilization={}\n"
+                "\tblock_size={}\n"
+                "\tmax_num_scheduled_tokens={}\n"
+                "\tmax_num_seqs",
+            config.model_path,
+            config.gpu_memory_utilization,
+            config.block_size,
+            config.max_num_scheduled_tokens,
+            config.max_num_seqs
+        ));
 
         zmq::context_t context;
         EngineCore engine_core(config, context, addresses);
