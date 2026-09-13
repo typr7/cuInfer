@@ -13,7 +13,8 @@ from jinja2 import TemplateError
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.types import Receive, Scope, Send
 
-from cllm.engine import EngineClient, EngineDied, FinishReason
+from cllm.engine import EngineClient, EngineDied
+from cllm.protocol import FinishReason
 from cllm.tokenizer import IncrementalDetokenizer
 
 

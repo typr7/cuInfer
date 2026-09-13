@@ -20,35 +20,40 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/dependencies.cmake)
 
 add_library(cllm_core STATIC
-    src/batch_buffer.cpp
-    src/model_weights.cpp
-    src/kv_cache.cpp
-    src/pinned_buffer.cpp
-    src/rope_cache.cpp
-    src/scheduler.cpp
-    src/logger.cpp
-    src/kv_cache_manager.cpp
-    src/cuda_context.cpp
-    src/cuda_device_buffer.cpp
-    src/model_config.cpp
-    src/engine_core.cpp
-    src/model_runner.cpp
-    src/sampler.cpp
-    src/workspace.cpp
+    csrc/common/logger.cpp
 
-    src/model/causal_lm.cpp
+    csrc/cuda/cuda_context.cpp
+    csrc/cuda/cuda_device_buffer.cpp
+    csrc/cuda/pinned_buffer.cpp
 
-    src/ops/embedding.cu
-    src/ops/paged_attention.cu
-    src/ops/projection.cu
-    src/ops/qk_norm_rope_fused.cu
-    src/ops/qk_norm.cu
-    src/ops/residual_add.cu
-    src/ops/rms_norm.cu
-    src/ops/rope.cu
-    src/ops/sampler.cu
-    src/ops/swiglu.cu
-    src/ops/unified_kv_cache_update.cu
+    csrc/engine/engine_core.cpp
+
+    csrc/scheduler/kv_cache_manager.cpp
+    csrc/scheduler/scheduler.cpp
+
+    csrc/executor/batch_buffer.cpp
+    csrc/executor/kv_cache.cpp
+    csrc/executor/model_input.cpp
+    csrc/executor/model_runner.cpp
+    csrc/executor/sampler.cpp
+    csrc/executor/workspace.cpp
+
+    csrc/model/causal_lm.cpp
+    csrc/model/model_config.cpp
+    csrc/model/model_weights.cpp
+    csrc/model/rope_cache.cpp
+
+    csrc/ops/embedding.cu
+    csrc/ops/paged_attention.cu
+    csrc/ops/projection.cu
+    csrc/ops/qk_norm_rope_fused.cu
+    csrc/ops/qk_norm.cu
+    csrc/ops/residual_add.cu
+    csrc/ops/rms_norm.cu
+    csrc/ops/rope.cu
+    csrc/ops/sampler.cu
+    csrc/ops/swiglu.cu
+    csrc/ops/unified_kv_cache_update.cu
 )
 
 set_target_properties(cllm_core PROPERTIES
@@ -57,7 +62,7 @@ set_target_properties(cllm_core PROPERTIES
 
 target_include_directories(cllm_core
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/csrc
 )
 
 target_link_libraries(cllm_core
@@ -74,7 +79,7 @@ target_link_libraries(cllm_core
 # Build the Python extension as _C.so. The Python interpreter is responsible
 # for spawning the EngineCore process; a separate C++ executable is not needed.
 pybind11_add_module(cllm_pybind MODULE
-    src/py_binding.cpp
+    csrc/bindings/py_binding.cpp
 )
 
 target_link_libraries(cllm_pybind

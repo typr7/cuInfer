@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from cllm.engine import FinishReason
+from cllm.protocol import FinishReason
 from cllm.tokenizer import IncrementalDetokenizer, load_model
 
 

@@ -5,7 +5,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
-from cllm.engine import FinishReason
+from cllm.protocol import FinishReason
 
 
 @dataclass(frozen=True)
