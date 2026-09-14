@@ -219,6 +219,7 @@ async def test_invalid_messages_never_reach_engine(client, tmp_path, payload):
 
 @pytest.mark.parametrize("params", [
     {"n": 2}, {"best_of": 1}, {"logprobs": 1}, {"top_logprobs": 1},
+    {"repetition_penalty": 0.9},
     {"stop": "end"}, {"seed": 1}, {"tools": []}, {"functions": []},
     {"response_format": {"type": "text"}}, {"presence_penalty": 0.1},
     {"frequency_penalty": -0.1}, {"logit_bias": {}}, {"echo": True},
@@ -235,6 +236,7 @@ async def test_accepted_parameters_are_forwarded(client, tmp_path):
         "prompt": "A", "max_tokens": 2, "temperature": 0.5, "top_k": 10,
         "top_p": 0.8, "ignore_eos": True, "n": 1,
         "presence_penalty": 0, "frequency_penalty": 0,
+        "repetition_penalty": 1.0, "logprobs": None,
         "user": "test", "stream_options": {}, "store": False, "metadata": {},
     })
     assert response.status_code == 200
@@ -242,6 +244,35 @@ async def test_accepted_parameters_are_forwarded(client, tmp_path):
     assert added["max_output_tokens"] == 2
     assert added["ignore_eos"] is True
     assert (added["temperature"], added["top_k"], added["top_p"]) == (0.5, 10, 0.8)
+
+
+async def test_streaming_usage_reports_engine_token_counts(client):
+    async with client.stream("POST", "/v1/completions", json={
+        "prompt": "A",
+        "max_tokens": 2,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+        "repetition_penalty": 1.0,
+        "logprobs": None,
+    }) as response:
+        assert response.status_code == 200
+        body = (await response.aread()).decode()
+
+    frames = body.split("\n\n")
+    chunks = [json.loads(frame.removeprefix("data: ")) for frame in frames[:-2]]
+    token_chunks = [chunk for chunk in chunks if chunk["choices"]]
+    usage_chunk = chunks[-1]
+
+    assert len(token_chunks) == 2
+    assert "".join(chunk["choices"][0]["text"] for chunk in token_chunks) == "Hi"
+    assert token_chunks[-1]["choices"][0]["finish_reason"] == "length"
+    assert usage_chunk["choices"] == []
+    assert usage_chunk["usage"] == {
+        "prompt_tokens": 1,
+        "completion_tokens": 2,
+        "total_tokens": 3,
+    }
+    assert frames[-2] == "data: [DONE]"
 
 
 @pytest.mark.parametrize("engine", [{"crash": "midrun", "eos_at": None}], indirect=True)

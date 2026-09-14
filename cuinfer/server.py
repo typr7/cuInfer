@@ -18,6 +18,12 @@ from cuinfer.protocol import FinishReason
 from cuinfer.tokenizer import IncrementalDetokenizer
 
 
+class StreamOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    include_usage: bool = False
+
+
 class CompletionParams(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
 
@@ -31,8 +37,10 @@ class CompletionParams(BaseModel):
     n: int = Field(default=1, ge=1, le=1)
     presence_penalty: float = Field(default=0, ge=0, le=0)
     frequency_penalty: float = Field(default=0, ge=0, le=0)
+    repetition_penalty: Literal[1.0] = 1.0
+    logprobs: None = None
     user: Any = None
-    stream_options: Any = None
+    stream_options: StreamOptions | None = None
     store: Any = None
     metadata: Any = None
 
@@ -179,16 +187,29 @@ def create_app(
                     "choices": [choice]}
 
         async def stream() -> AsyncIterator[str]:
+            completion_tokens = 0
             try:
                 if chat:
                     yield sse(chunk(role=True))
                 async for output in outputs:
+                    completion_tokens += len(output["new_token_ids"])
                     reason = FinishReason(output["finish_reason"])
                     delta = decoder.push(output["new_token_ids"], reason)
-                    if delta:
-                        yield sse(chunk(delta))
-                    if reason != FinishReason.RUNNING:
-                        yield sse(chunk(finish_reason="stop" if reason == FinishReason.STOP else "length"))
+                    finish_reason = None if reason == FinishReason.RUNNING else (
+                        "stop" if reason == FinishReason.STOP else "length"
+                    )
+                    yield sse(chunk(delta, finish_reason=finish_reason))
+                if body.stream_options is not None and body.stream_options.include_usage:
+                    yield sse({
+                        **base,
+                        "object": "chat.completion.chunk" if chat else "text_completion",
+                        "choices": [],
+                        "usage": {
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "total_tokens": prompt_tokens + completion_tokens,
+                        },
+                    })
                 yield sse("[DONE]")
             except EngineDied as exc:
                 yield sse({"error": {"message": str(exc), "type": "server_error"}})
