@@ -200,7 +200,7 @@ RequestList& Scheduler::queue_of(RequestStatus status) noexcept
 
 FinishReason Scheduler::finish_reason(const Request& request, bool eos_token) const noexcept
 {
-    if (eos_token) {
+    if (!request.ignore_eos && eos_token) {
         return FinishReason::kStop;
     }
 

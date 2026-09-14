@@ -167,7 +167,7 @@ class EngineClient:
                 send.cancel()
 
     async def generate(
-        self, request_id: str, token_ids: list[int], params: dict[str, int | float]
+        self, request_id: str, token_ids: list[int], params: dict[str, int | float | bool]
     ) -> AsyncIterator[dict[str, Any]]:
         if not self.alive:
             raise self.error or EngineDied("Engine is not alive")

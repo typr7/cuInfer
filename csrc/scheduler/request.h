@@ -33,6 +33,8 @@ struct Request
 
     int max_output_tokens;
 
+    bool ignore_eos;
+
     // prompt tokens followed by every sampled token
     std::vector<int> token_ids;
 

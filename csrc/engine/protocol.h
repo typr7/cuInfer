@@ -41,13 +41,22 @@ struct EngineCoreRequest
     std::string request_id;
 
     int max_output_tokens = 1024;
+    bool ignore_eos = false;
     float temperature = 1.f;
     int top_k = 0;
     float top_p = 1.f;
 
     std::vector<int> token_ids;
 
-    MSGPACK_DEFINE_MAP(request_id, max_output_tokens, temperature, top_k, top_p, token_ids);
+    MSGPACK_DEFINE_MAP(
+        request_id,
+        max_output_tokens,
+        ignore_eos,
+        temperature,
+        top_k,
+        top_p,
+        token_ids
+    );
 };
 
 enum class FinishReason: std::uint8_t

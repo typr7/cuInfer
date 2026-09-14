@@ -84,8 +84,9 @@ def run_fake_engine(
                     reason = FinishReason.RUNNING
                     if eos_at == index + 1:
                         token = eos_token
-                        reason = FinishReason.STOP
-                    elif index + 1 >= request["max_output_tokens"]:
+                        if not request.get("ignore_eos", False):
+                            reason = FinishReason.STOP
+                    if reason == FinishReason.RUNNING and index + 1 >= request["max_output_tokens"]:
                         reason = FinishReason.LENGTH
                     outputs.append({
                         "request_id": request_id,

@@ -104,6 +104,7 @@ async def test_chat_completion_and_defaults(client, tmp_path):
     added = await wait_for_event(tmp_path / "engine.jsonl", "ADD")
     assert added["token_ids"] == [99, 104, 97, 116]
     assert added["max_output_tokens"] == 28
+    assert added["ignore_eos"] is False
     assert (added["temperature"], added["top_k"], added["top_p"]) == (1.0, 0, 1.0)
 
 
@@ -120,6 +121,17 @@ async def test_text_completion(client, prompt):
     assert result["usage"] == {
         "prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2
     }
+
+
+async def test_ignore_eos_continues_until_max_tokens(client):
+    response = await client.post("/v1/completions", json={
+        "prompt": "A", "max_tokens": 4, "ignore_eos": True,
+    })
+    assert response.status_code == 200
+    result = response.json()
+    assert result["choices"][0]["text"] == "Hii"
+    assert result["choices"][0]["finish_reason"] == "length"
+    assert result["usage"]["completion_tokens"] == 4
 
 
 @pytest.mark.parametrize("chat", [True, False])
@@ -159,6 +171,7 @@ async def test_streaming_completion(client, chat, max_tokens):
     {"prompt": [65] * 31, "max_tokens": 2},
     {"max_tokens": 0}, {"max_tokens": -1}, {"max_tokens": 1.5},
     {"temperature": -0.1}, {"top_k": -1}, {"top_p": 0}, {"top_p": 1.1},
+    {"ignore_eos": 1},
     {"prompt": [-1]}, {"prompt": [256]}, {"prompt": [True]}, {"prompt": ["65"]},
     {"prompt": [2**64]}, {"max_tokens": 2**64}, {"top_k": 2**64},
     {"temperature": 1e100},
@@ -220,12 +233,14 @@ async def test_unsupported_parameters_never_reach_engine(client, tmp_path, param
 async def test_accepted_parameters_are_forwarded(client, tmp_path):
     response = await client.post("/v1/completions", json={
         "prompt": "A", "max_tokens": 2, "temperature": 0.5, "top_k": 10,
-        "top_p": 0.8, "n": 1, "presence_penalty": 0, "frequency_penalty": 0,
+        "top_p": 0.8, "ignore_eos": True, "n": 1,
+        "presence_penalty": 0, "frequency_penalty": 0,
         "user": "test", "stream_options": {}, "store": False, "metadata": {},
     })
     assert response.status_code == 200
     added = await wait_for_event(tmp_path / "engine.jsonl", "ADD")
     assert added["max_output_tokens"] == 2
+    assert added["ignore_eos"] is True
     assert (added["temperature"], added["top_k"], added["top_p"]) == (0.5, 10, 0.8)
 
 

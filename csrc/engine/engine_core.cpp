@@ -29,6 +29,7 @@ Request to_request(EngineCoreRequest request)
     return Request{
         .id = std::move(request.request_id),
         .max_output_tokens = request.max_output_tokens,
+        .ignore_eos = request.ignore_eos,
         .token_ids = std::move(request.token_ids),
         .sample_params = SampleParams{
             .temperature = request.temperature,
@@ -194,7 +195,7 @@ EngineCoreShutdownReason run_engine_core(const Config& config, const Addresses& 
                 "\tgpu_memory_utilization={}\n"
                 "\tblock_size={}\n"
                 "\tmax_num_scheduled_tokens={}\n"
-                "\tmax_num_seqs",
+                "\tmax_num_seqs={}",
             config.model_path,
             config.gpu_memory_utilization,
             config.block_size,

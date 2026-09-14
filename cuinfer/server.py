@@ -26,6 +26,7 @@ class CompletionParams(BaseModel):
     temperature: float = Field(default=1.0, ge=0, le=3.4028234663852886e38)
     top_p: float = Field(default=1.0, gt=0, le=1)
     top_k: int = Field(default=0, ge=0, le=2**31 - 1)
+    ignore_eos: bool = False
     stream: bool = False
     n: int = Field(default=1, ge=1, le=1)
     presence_penalty: float = Field(default=0, ge=0, le=0)
@@ -158,6 +159,7 @@ def create_app(
             "temperature": body.temperature,
             "top_k": body.top_k,
             "top_p": body.top_p,
+            "ignore_eos": body.ignore_eos,
         })
         base = {"id": request_id, "created": created, "model": model_name}
 
