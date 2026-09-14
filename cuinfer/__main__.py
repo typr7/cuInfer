@@ -24,6 +24,7 @@ async def serve(args: argparse.Namespace) -> int:
         host=args.host,
         port=args.port,
         workers=1,
+        access_log=not args.disable_access_log,
         timeout_graceful_shutdown=5,
     ))
 
@@ -49,6 +50,7 @@ def main() -> None:
     command.add_argument("--model", required=True)
     command.add_argument("--host", default="0.0.0.0")
     command.add_argument("--port", type=int, default=8000)
+    command.add_argument("--disable-access-log", action="store_true")
     command.add_argument("--gpu-memory-utilization", type=float, default=0.8)
     command.add_argument("--block-size", type=int, default=16)
     command.add_argument("--max-num-scheduled-tokens", type=int, default=8192)
