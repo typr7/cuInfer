@@ -1,11 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
 
-# Default to Ada Lovelace (compute capability 8.9), while still allowing users
-# to select another architecture with -DCMAKE_CUDA_ARCHITECTURES=<value>.
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 89 CACHE STRING "CUDA architectures to build for")
-endif()
-
 project(cuinfer LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
