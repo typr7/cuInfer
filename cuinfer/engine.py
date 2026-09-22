@@ -23,6 +23,7 @@ class EngineConfig:
     block_size: int = 16
     max_num_scheduled_tokens: int = 8192
     max_num_seqs: int = 256
+    enable_prefix_caching: bool = True
 
     def __post_init__(self) -> None:
         if not 0 < self.gpu_memory_utilization <= 0.95:

@@ -17,6 +17,7 @@ async def serve(args: argparse.Namespace) -> int:
         block_size=args.block_size,
         max_num_scheduled_tokens=args.max_num_scheduled_tokens,
         max_num_seqs=args.max_num_seqs,
+        enable_prefix_caching=not args.disable_prefix_caching,
     )
     engine = await EngineClient.start(config)
     server = uvicorn.Server(uvicorn.Config(
@@ -55,6 +56,11 @@ def main() -> None:
     command.add_argument("--block-size", type=int, default=16)
     command.add_argument("--max-num-scheduled-tokens", type=int, default=8192)
     command.add_argument("--max-num-seqs", type=int, default=256)
+    command.add_argument(
+        "--disable-prefix-caching",
+        action="store_true",
+        help="compute every prompt from scratch instead of reusing cached kv blocks",
+    )
     args = parser.parse_args()
     try:
         EngineConfig(
@@ -63,6 +69,7 @@ def main() -> None:
             block_size=args.block_size,
             max_num_scheduled_tokens=args.max_num_scheduled_tokens,
             max_num_seqs=args.max_num_seqs,
+            enable_prefix_caching=not args.disable_prefix_caching,
         )
     except ValueError as exc:
         parser.error(str(exc))

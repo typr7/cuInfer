@@ -18,8 +18,8 @@ namespace cuinfer
 using RequestList = std::list<Request>;
 using RequestIterator = RequestList::iterator;
 
-// enable: contiunous batching, chunked prefill, kv cache blocks manage, FCFS, preemptive scheduling
-// disable: spec decoding, prefix caching, priority scheduling, async scheduling
+// enable: contiunous batching, chunked prefill, kv cache blocks manage, FCFS, preemptive scheduling, prefix caching
+// disable: spec decoding, priority scheduling, async scheduling
 class Scheduler
 {
 public:
@@ -39,6 +39,8 @@ public:
     std::vector<ScheduledRequest> schedule();
 
     EngineCoreOutputs update(const std::vector<SampledToken>& sampled);
+
+    PrefixCacheStats prefix_cache_stats() const;
 
 private:
     void remove_request(RequestIterator request_iter);

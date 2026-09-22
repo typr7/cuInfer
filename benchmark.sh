@@ -51,7 +51,6 @@ else
             --block-size 16 \
             --max-num-batched-tokens 8192 \
             --max-num-seqs 256 \
-            --no-enable-prefix-caching \
             --disable-uvicorn-access-log
     ) >"$RESULT_DIR/logs/server.log" 2>&1 &
 fi

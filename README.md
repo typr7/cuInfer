@@ -10,6 +10,7 @@ owns the GPU, the KV cache and the scheduler.
 - OpenAI-compatible HTTP API
 - Continuous batching with chunked prefill
 - Paged KV cache
+- Prefix caching
 - Preemptive scheduling
 - Hand-written CUDA kernels
 - Request abort

@@ -71,7 +71,7 @@ std::vector<ScheduledRequest> Scheduler::schedule()
 
             auto preempted_iter = std::prev(running_.end());
 
-            kv_cache_manager_.release_blocks(preempted_iter->id);
+            kv_cache_manager_.release_blocks(*preempted_iter);
             preempted_iter->num_computed_tokens = 0;
             preempted_iter->status = RequestStatus::kPreempted;
 
@@ -117,30 +117,39 @@ std::vector<ScheduledRequest> Scheduler::schedule()
             auto& request_queue = preempted_.empty() ? waiting_ : preempted_;
             auto cur_iter = request_queue.begin();
 
+            // Share the kv cache of the prompt prefix another request computed
+            int num_reused_tokens = kv_cache_manager_.reuse_prefix(*cur_iter);
+            cur_iter->num_computed_tokens = num_reused_tokens;
+
             int num_tokens = static_cast<int>(cur_iter->token_ids.size());
-            int num_scheduled_tokens = std::min(num_tokens, token_budget);
+            int num_scheduled_tokens = std::min(num_tokens - num_reused_tokens, token_budget);
             assert(num_scheduled_tokens > 0);
 
             if (!kv_cache_manager_.allocate_slots(*cur_iter, num_scheduled_tokens)) {
+                kv_cache_manager_.release_blocks(*cur_iter);
+                cur_iter->num_computed_tokens = 0;
                 break;
             }
 
-            cur_iter->num_prefill_tokens = static_cast<int>(cur_iter->token_ids.size());
+            cur_iter->num_prefill_tokens = num_tokens;
             token_budget -= num_scheduled_tokens;
+            kv_cache_manager_.record_prefix_reuse(num_reused_tokens);
 
+            const auto compute_begin = cur_iter->token_ids.begin() + num_reused_tokens;
+            const int num_computed_after = num_reused_tokens + num_scheduled_tokens;
             scheduled.push_back({
                 .request_id = cur_iter->id,
                 .is_prefill = true,
-                .needs_sampling = num_scheduled_tokens >= cur_iter->num_prefill_tokens,
-                .position_offset = 0,
+                .needs_sampling = num_computed_after >= cur_iter->num_prefill_tokens,
+                .position_offset = num_reused_tokens,
                 .tokens_to_compute = std::vector<int>(
-                    cur_iter->token_ids.begin(),
-                    cur_iter->token_ids.begin() + num_scheduled_tokens
+                    compute_begin,
+                    compute_begin + num_scheduled_tokens
                 ),
                 .allocated_blocks = kv_cache_manager_.get_allocated_blocks(cur_iter->id),
                 .sample_params = cur_iter->sample_params
             });
-            cur_iter->num_computed_tokens = num_scheduled_tokens;
+            cur_iter->num_computed_tokens = num_computed_after;
             cur_iter->status = RequestStatus::kRunning;
 
             running_.splice(running_.end(), request_queue, cur_iter);
@@ -176,13 +185,14 @@ EngineCoreOutputs Scheduler::update(const std::vector<SampledToken>& sampled)
 
 void Scheduler::remove_request(RequestIterator request_iter)
 {
-    // Only running requests hold kv cache blocks; preemption already released
-    // them and waiting requests never had any.
-    if (request_iter->status == RequestStatus::kRunning) {
-        kv_cache_manager_.release_blocks(request_iter->id);
-    }
+    kv_cache_manager_.release_blocks(*request_iter);
     id_to_request_.erase(request_iter->id);
     queue_of(request_iter->status).erase(request_iter);
+}
+
+PrefixCacheStats Scheduler::prefix_cache_stats() const
+{
+    return kv_cache_manager_.prefix_cache_stats();
 }
 
 RequestList& Scheduler::queue_of(RequestStatus status) noexcept

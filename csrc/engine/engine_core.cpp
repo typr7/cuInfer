@@ -24,6 +24,8 @@ namespace cuinfer
 namespace
 {
 
+constexpr int kPrefixCacheLogIntervalSteps = 200;
+
 Request to_request(EngineCoreRequest request)
 {
     return Request{
@@ -96,7 +98,13 @@ public:
             if (!outputs.empty()) {
                 send(OutputType::kOutputs, outputs);
             }
+
+            if (++num_steps_ % kPrefixCacheLogIntervalSteps == 0) {
+                log_prefix_cache_stats();
+            }
         }
+
+        log_prefix_cache_stats();
     }
 
 private:
@@ -123,8 +131,27 @@ private:
 
         return KVCacheConfig{
             .num_block_slots = config.block_size,
-            .num_blocks = num_blocks
+            .num_blocks = num_blocks,
+            .enable_prefix_caching = config.enable_prefix_caching
         };
+    }
+
+    void log_prefix_cache_stats()
+    {
+        const PrefixCacheStats stats = scheduler_.prefix_cache_stats();
+        if (stats.num_queries == logged_queries_) {
+            return;
+        }
+        logged_queries_ = stats.num_queries;
+
+        Logger::info(std::format(
+            "Prefix cache: {} of {} requests reused a prefix ({} tokens), {}/{} blocks cached",
+            stats.num_hits,
+            stats.num_queries,
+            stats.num_reused_tokens,
+            stats.num_cached_blocks,
+            stats.num_blocks
+        ));
     }
 
     bool process_inputs(bool block)
@@ -182,6 +209,10 @@ private:
 
     ModelRunner model_runner_;
     Scheduler scheduler_;
+
+    // for the periodic prefix cache log
+    long num_steps_ = 0;
+    int logged_queries_ = 0;
 };
 
 }
@@ -195,12 +226,14 @@ EngineCoreShutdownReason run_engine_core(const Config& config, const Addresses& 
                 "\tgpu_memory_utilization={}\n"
                 "\tblock_size={}\n"
                 "\tmax_num_scheduled_tokens={}\n"
-                "\tmax_num_seqs={}",
+                "\tmax_num_seqs={}\n"
+                "\tenable_prefix_caching={}",
             config.model_path,
             config.gpu_memory_utilization,
             config.block_size,
             config.max_num_scheduled_tokens,
-            config.max_num_seqs
+            config.max_num_seqs,
+            config.enable_prefix_caching
         ));
 
         zmq::context_t context;

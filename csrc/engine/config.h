@@ -20,6 +20,10 @@ struct Config
     // Upper bound on requests running concurrently. Bounds the per-step batch
     // metadata the model runner preallocates.
     int max_num_seqs = 256;
+
+    // Serve a prompt prefix from the kv cache of an earlier request instead of
+    // computing it again.
+    bool enable_prefix_caching = true;
 };
 
 }

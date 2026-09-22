@@ -14,7 +14,8 @@ PYBIND11_MODULE(_C, module)
         .def_readwrite("gpu_memory_utilization", &cuinfer::Config::gpu_memory_utilization)
         .def_readwrite("block_size", &cuinfer::Config::block_size)
         .def_readwrite("max_num_scheduled_tokens", &cuinfer::Config::max_num_scheduled_tokens)
-        .def_readwrite("max_num_seqs", &cuinfer::Config::max_num_seqs);
+        .def_readwrite("max_num_seqs", &cuinfer::Config::max_num_seqs)
+        .def_readwrite("enable_prefix_caching", &cuinfer::Config::enable_prefix_caching);
 
     py::class_<cuinfer::Addresses>(module, "EngineCoreAddresses")
         .def(py::init<>())
