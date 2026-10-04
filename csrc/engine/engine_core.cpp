@@ -227,13 +227,15 @@ EngineCoreShutdownReason run_engine_core(const Config& config, const Addresses& 
                 "\tblock_size={}\n"
                 "\tmax_num_scheduled_tokens={}\n"
                 "\tmax_num_seqs={}\n"
-                "\tenable_prefix_caching={}",
+                "\tenable_prefix_caching={}\n"
+                "\tenable_cuda_graph={}",
             config.model_path,
             config.gpu_memory_utilization,
             config.block_size,
             config.max_num_scheduled_tokens,
             config.max_num_seqs,
-            config.enable_prefix_caching
+            config.enable_prefix_caching,
+            config.enable_cuda_graph
         ));
 
         zmq::context_t context;
