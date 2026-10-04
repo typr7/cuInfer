@@ -26,8 +26,8 @@ add_library(cuinfer_core STATIC
     csrc/scheduler/scheduler.cpp
 
     csrc/executor/batch_buffer.cpp
+    csrc/executor/cuda_graph_runner.cpp
     csrc/executor/kv_cache.cpp
-    csrc/executor/model_input.cpp
     csrc/executor/model_runner.cpp
     csrc/executor/sampler.cpp
     csrc/executor/workspace.cpp

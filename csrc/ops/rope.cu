@@ -42,9 +42,14 @@ void bf16_rope_packedqkv(
     nv_bfloat16* __restrict__ qkv,
     const float* __restrict__ cos_sin,
     const int* __restrict__ positions,
-    uint32_t stride
+    uint32_t stride,
+    const int* num_tokens_device
 )
 {
+    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+        return;
+    }
+
     constexpr uint32_t kNumThreadsPerBlock = 128;
     constexpr uint32_t kNumThreadsPerHead = kHeadDim / kNumBf16sPerVector;
     constexpr uint32_t kNumHeadsPerBlock = kNumThreadsPerBlock / kNumThreadsPerHead;
@@ -126,7 +131,8 @@ void rope(
     int q_size,
     int k_size,
     int head_dim,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device
 )
 {
     assert(qkv && rope_cache && positions != nullptr);
@@ -143,7 +149,8 @@ void rope(
             static_cast<nv_bfloat16*>(qkv.device_ptr),
             static_cast<const float*>(rope_cache.device_ptr),
             positions,
-            stride
+            stride,
+            num_tokens_device
         );
     } else if (q_size == 2048 && k_size == 512 && head_dim == 64) {
         constexpr uint32_t kNumHeads = 40;
@@ -155,7 +162,8 @@ void rope(
             static_cast<nv_bfloat16*>(qkv.device_ptr),
             static_cast<const float*>(rope_cache.device_ptr),
             positions,
-            stride
+            stride,
+            num_tokens_device
         );
     } else {
         throw std::runtime_error(std::format(

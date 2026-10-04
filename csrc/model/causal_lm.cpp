@@ -35,11 +35,14 @@ void CausalLM::forward(
         batch.token_ids,
         weights_.embed_tokens,
         workspace.residual,
-        context.stream()
+        context.stream(),
+        batch.num_tokens_device
     );
 
     for (int layer = 0; layer < config_.num_hidden_layers; layer++) {
-        decoder_layer(context, batch, kv_cache, workspace, layer);
+        pre_attention(context, batch, kv_cache, workspace, layer);
+        forward_attention(context, batch, kv_cache, workspace, layer);
+        post_attention(context, batch, workspace, layer);
     }
 }
 
@@ -76,7 +79,28 @@ void CausalLM::compute_logits(
     );
 }
 
-void CausalLM::decoder_layer(
+void CausalLM::forward_graph_segment(
+    const CudaContext& context,
+    const ForwardBatch& batch,
+    const KVCacheView& kv_cache,
+    const WorkspaceView& workspace,
+    int segment
+) const
+{
+    if (segment == 0) {
+        ops::embedding(
+            batch.token_ids, weights_.embed_tokens, workspace.residual,
+            context.stream(), batch.num_tokens_device
+        );
+    } else {
+        post_attention(context, batch, workspace, segment - 1);
+    }
+    if (segment < config_.num_hidden_layers) {
+        pre_attention(context, batch, kv_cache, workspace, segment);
+    }
+}
+
+void CausalLM::pre_attention(
     const CudaContext& context,
     const ForwardBatch& batch,
     const KVCacheView& kv_cache,
@@ -90,7 +114,8 @@ void CausalLM::decoder_layer(
         layer_weights.input_layernorm,
         workspace.hidden,
         config_.rms_norm_eps,
-        context.stream()
+        context.stream(),
+        batch.num_tokens_device
     );
     ops::projection(workspace.hidden, layer_weights.qkv_proj, workspace.qkv, context.cublas());
 
@@ -107,7 +132,8 @@ void CausalLM::decoder_layer(
             kv_size_,
             config_.head_dim,
             config_.rms_norm_eps,
-            context.stream()
+            context.stream(),
+            batch.num_tokens_device
         );
     } else {
         ops::rope(
@@ -117,7 +143,8 @@ void CausalLM::decoder_layer(
             q_size_,
             kv_size_,
             config_.head_dim,
-            context.stream()
+            context.stream(),
+            batch.num_tokens_device
         );
     }
 
@@ -128,7 +155,16 @@ void CausalLM::decoder_layer(
         batch.slot_mapping,
         context.stream()
     );
+}
 
+void CausalLM::forward_attention(
+    const CudaContext& context,
+    const ForwardBatch& batch,
+    const KVCacheView& kv_cache,
+    const WorkspaceView& workspace,
+    int layer
+) const
+{
     ops::paged_attention(
         workspace.qkv,
         kv_cache.k(layer),
@@ -138,17 +174,27 @@ void CausalLM::decoder_layer(
         kv_cache.block_size,
         context.stream()
     );
+}
 
+void CausalLM::post_attention(
+    const CudaContext& context,
+    const ForwardBatch& batch,
+    const WorkspaceView& workspace,
+    int layer
+) const
+{
+    const LayerWeights& layer_weights = weights_.layers.at(layer);
     ops::projection(workspace.attn_out, layer_weights.o_proj, workspace.hidden, context.cublas());
 
-    ops::residual_add(workspace.hidden, workspace.residual, context.stream());
+    ops::residual_add(workspace.hidden, workspace.residual, context.stream(), batch.num_tokens_device);
 
     ops::rms_norm(
         workspace.residual,
         layer_weights.post_attn_layernorm,
         workspace.hidden,
         config_.rms_norm_eps,
-        context.stream()
+        context.stream(),
+        batch.num_tokens_device
     );
 
     ops::projection(
@@ -158,11 +204,11 @@ void CausalLM::decoder_layer(
         context.cublas()
     );
 
-    ops::swiglu(workspace.gate_up, context.stream()); // -> gated
+    ops::swiglu(workspace.gate_up, context.stream(), batch.num_tokens_device); // -> gated
 
     ops::projection(workspace.gated, layer_weights.down_proj, workspace.hidden, context.cublas());
 
-    ops::residual_add(workspace.hidden, workspace.residual, context.stream());
+    ops::residual_add(workspace.hidden, workspace.residual, context.stream(), batch.num_tokens_device);
 }
 
 }

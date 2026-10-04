@@ -13,6 +13,7 @@ owns the GPU, the KV cache and the scheduler.
 - Prefix caching
 - Preemptive scheduling
 - Hand-written CUDA kernels
+- CUDA Graph
 - Request abort
 - Supported Models: Qwen3-0.6B, Llama3.2-1B
 

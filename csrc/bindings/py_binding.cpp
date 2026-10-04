@@ -15,7 +15,8 @@ PYBIND11_MODULE(_C, module)
         .def_readwrite("block_size", &cuinfer::Config::block_size)
         .def_readwrite("max_num_scheduled_tokens", &cuinfer::Config::max_num_scheduled_tokens)
         .def_readwrite("max_num_seqs", &cuinfer::Config::max_num_seqs)
-        .def_readwrite("enable_prefix_caching", &cuinfer::Config::enable_prefix_caching);
+        .def_readwrite("enable_prefix_caching", &cuinfer::Config::enable_prefix_caching)
+        .def_readwrite("enable_cuda_graph", &cuinfer::Config::enable_cuda_graph);
 
     py::class_<cuinfer::Addresses>(module, "EngineCoreAddresses")
         .def(py::init<>())

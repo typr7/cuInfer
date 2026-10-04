@@ -19,7 +19,8 @@ void qk_norm_rope(
     int head_dim,
     /* int rotary_dim = head_dim */
     float eps,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device = nullptr
 );
 
 }

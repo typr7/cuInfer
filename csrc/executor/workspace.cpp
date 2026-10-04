@@ -4,6 +4,7 @@
 #include "executor/workspace.h"
 #include "tensor/data_type.h"
 #include "common/util.h"
+#include "cuda/cuda_utils.h"
 
 
 namespace cuinfer
@@ -106,6 +107,13 @@ Workspace Workspace::create(
     workspace.data_ = std::move(data);
 
     return workspace;
+}
+
+void Workspace::zero(const CudaContext& context)
+{
+    CUDA_CHECK(cudaMemsetAsync(
+        data_.data(), 0, data_.size(), context.stream()
+    ));
 }
 
 WorkspaceView Workspace::view(

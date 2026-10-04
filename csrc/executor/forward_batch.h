@@ -17,6 +17,7 @@ struct ForwardBatch
     const int* logits_indices;   // [num_sampling_reqs]
     const SampleParams* sample_params; // [num_sampling_reqs]
     int* sampled_token_ids;      // [num_sampling_reqs], aliases token_ids after embedding
+    const int* num_tokens_device; // Actual token count at a fixed device address.
 
     int block_table_stride;
     int num_tokens;

@@ -8,6 +8,7 @@
 #include "executor/forward_batch.h"
 #include "executor/workspace.h"
 #include "executor/batch_buffer.h"
+#include "executor/cuda_graph_runner.h"
 #include "model/causal_lm.h"
 #include "executor/sampler.h"
 
@@ -32,32 +33,64 @@ struct ModelRunner::Impl
           )),
           batch_buffer(BatchBuffer::create(config, model_config))
         {
+            if (config.enable_cuda_graph) {
+                graph_runner = std::make_unique<CudaGraphRunner>(
+                    config.max_num_scheduled_tokens, model_config.num_hidden_layers
+                );
+                // Include warmed-up cuBLAS and graph allocations in the KV budget.
+                // Recapture against the final KV addresses after allocating that pool.
+                const KVCache profiling_cache = KVCache::create(model_config, 1, config.block_size);
+                graph_runner->capture(
+                    context, model,
+                    batch_buffer.upload({}, context, config.max_num_scheduled_tokens),
+                    profiling_cache.view, workspace
+                );
+            }
         }
 
     void allocate_kv_cache(int num_blocks)
     {
         kv_cache = KVCache::create(model_config, num_blocks, config.block_size);
+        if (graph_runner) {
+            graph_runner->capture(
+                context, model,
+                batch_buffer.upload({}, context, config.max_num_scheduled_tokens),
+                kv_cache.view, workspace
+            );
+        }
     }
 
     void run_model(const std::vector<ScheduledRequest>& scheduled)
     {
-        const ModelInput input = prepare_model_input(scheduled, config.block_size);
-        const ForwardBatch batch = batch_buffer.upload(input, context);
+        int padded_num_tokens = 0;
+        if (graph_runner) {
+            int num_tokens = 0;
+            for (const ScheduledRequest& request : scheduled) {
+                num_tokens += static_cast<int>(request.tokens_to_compute.size());
+            }
+            padded_num_tokens = graph_runner->bucket_size(num_tokens);
+        }
+        const ForwardBatch batch = batch_buffer.upload(scheduled, context, padded_num_tokens);
         const WorkspaceView workspace_view = workspace.view(batch.num_tokens, batch.num_sampling_reqs);
 
-        model.forward(context, batch, kv_cache.view, workspace_view);
+        if (graph_runner) {
+            graph_runner->forward(context, model, batch, kv_cache.view, workspace);
+        } else {
+            model.forward(context, batch, kv_cache.view, workspace_view);
+        }
         model.compute_logits(context, batch, workspace_view);
         sampler.sample(context, workspace_view.logits, batch);
         batch_buffer.download_sampled_token_ids(batch.num_sampling_reqs, context);
 
         inflight.clear();
-        inflight.reserve(input.sampling_request_indices.size());
-        for (int idx: input.sampling_request_indices) {
-            inflight.push_back({
-                .request_id = scheduled[idx].request_id,
-                .token_id = -1,
-                .eos_token = false
-            });
+        for (const ScheduledRequest& request: scheduled) {
+            if (request.needs_sampling) {
+                inflight.push_back({
+                    .request_id = request.request_id,
+                    .token_id = -1,
+                    .eos_token = false
+                });
+            }
         }
     }
 
@@ -105,6 +138,9 @@ struct ModelRunner::Impl
 
     // allocated by allocate_kv_cache()
     KVCache kv_cache;
+
+    // Destroy captured graphs before the buffers and model they reference.
+    std::unique_ptr<CudaGraphRunner> graph_runner;
 
     std::vector<SampledToken> inflight;
 };

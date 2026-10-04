@@ -43,9 +43,14 @@ void bf16_qk_norm_rope_fused_packedqkv_q2048k1024d128(
     const float* __restrict__ cos_sin, // [max_position, rotary / 2, 2 (cos then sin)]
     const int* __restrict__ positions,
     uint32_t stride,
-    float eps
+    float eps,
+    const int* num_tokens_device
 )
 {
+    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+        return;
+    }
+
     // qkv: [Q (2048) | K (1024) | V] -> [16 heads | 8 heads | V]
     constexpr uint32_t kNumThreadsPerBlock = 128;
     constexpr uint32_t kHeadDim = 128;
@@ -155,7 +160,8 @@ void qk_norm_rope(
     int k_size,
     int head_dim,
     float eps,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device
 )
 {
     assert(qkv && q_weights && k_weights && rope_cache && positions != nullptr);
@@ -175,7 +181,8 @@ void qk_norm_rope(
             static_cast<const float*>(rope_cache.device_ptr),
             positions,
             static_cast<uint32_t>(stride),
-            eps
+            eps,
+            num_tokens_device
         );
     } else {
         throw std::runtime_error(std::format(

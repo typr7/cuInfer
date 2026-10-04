@@ -31,11 +31,34 @@ public:
         const WorkspaceView& workspace
     ) const;
 
-private:
-    void decoder_layer(
+    void forward_graph_segment(
         const CudaContext& context,
         const ForwardBatch& batch,
         const KVCacheView& kv_cache,
+        const WorkspaceView& workspace,
+        int segment
+    ) const;
+
+    void forward_attention(
+        const CudaContext& context,
+        const ForwardBatch& batch,
+        const KVCacheView& kv_cache,
+        const WorkspaceView& workspace,
+        int layer
+    ) const;
+
+private:
+    void pre_attention(
+        const CudaContext& context,
+        const ForwardBatch& batch,
+        const KVCacheView& kv_cache,
+        const WorkspaceView& workspace,
+        int layer
+    ) const;
+
+    void post_attention(
+        const CudaContext& context,
+        const ForwardBatch& batch,
         const WorkspaceView& workspace,
         int layer
     ) const;

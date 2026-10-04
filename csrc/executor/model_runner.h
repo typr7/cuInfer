@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "engine/config.h"
-#include "executor/model_input.h"
 #include "scheduler/request.h"
 #include "model/model_config.h"
 

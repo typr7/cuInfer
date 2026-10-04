@@ -2,6 +2,7 @@
 
 #include "tensor/tensor.h"
 #include "cuda/cuda_device_buffer.h"
+#include "cuda/cuda_context.h"
 #include "model/model_config.h"
 
 
@@ -29,6 +30,7 @@ struct Workspace
     );
 
     WorkspaceView view(int num_tokens, int num_sampling_reqs) const;
+    void zero(const CudaContext& context);
 
 private:
     Tensor<2> hidden_;

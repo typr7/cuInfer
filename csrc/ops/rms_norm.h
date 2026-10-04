@@ -13,7 +13,8 @@ void rms_norm(
     TensorRef<1> weights,
     TensorRef<2> output,
     float eps,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device = nullptr
 );
 
 }

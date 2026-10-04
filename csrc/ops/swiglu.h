@@ -8,6 +8,6 @@
 namespace cuinfer::ops
 {
 
-void swiglu(TensorRef<2> gate_up, cudaStream_t stream);
+void swiglu(TensorRef<2> gate_up, cudaStream_t stream, const int* num_tokens_device = nullptr);
 
 }

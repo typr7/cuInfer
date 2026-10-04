@@ -33,8 +33,12 @@ nv_bfloat162 silu_and_mul_bf162(nv_bfloat162 x, nv_bfloat162 y)
 
 template <uint32_t kNumThreads>
 __global__ __launch_bounds__(kNumThreads)
-void bf16_swiglu_packedgu(nv_bfloat16* gate_up, uint32_t intermediate_size)
+void bf16_swiglu_packedgu(nv_bfloat16* gate_up, uint32_t intermediate_size, const int* num_tokens_device)
 {
+    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+        return;
+    }
+
     const uint32_t stride = 2 * intermediate_size;
     const auto* gate_u4 = reinterpret_cast<const uint4*>(gate_up + blockIdx.x * stride);
     const auto* up_u4 =
@@ -58,7 +62,7 @@ void bf16_swiglu_packedgu(nv_bfloat16* gate_up, uint32_t intermediate_size)
 }
 
 // gate_up: [gate | up]
-void swiglu(TensorRef<2> gate_up, cudaStream_t stream)
+void swiglu(TensorRef<2> gate_up, cudaStream_t stream, const int* num_tokens_device)
 {
     assert(gate_up);
 
@@ -70,7 +74,8 @@ void swiglu(TensorRef<2> gate_up, cudaStream_t stream)
     if (inter_dim % kNumBf16sPerVector == 0) {
         bf16_swiglu_packedgu<kNumThreads><<<num_tokens, kNumThreads, 0, stream>>>(
             static_cast<nv_bfloat16*>(gate_up.device_ptr),
-            inter_dim
+            inter_dim,
+            num_tokens_device
         );
     } else {
         throw std::runtime_error(std::format("unsupported intermediate size: {}", inter_dim));

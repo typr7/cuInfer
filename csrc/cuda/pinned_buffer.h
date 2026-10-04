@@ -23,8 +23,6 @@ public:
 
     void resize(std::size_t byte_size);
 
-    void upload_at(std::size_t dst_offset, const void* src, std::size_t byte_size);
-
     template <typename T = void>
     T* data() const noexcept
     {

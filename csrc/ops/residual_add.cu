@@ -23,8 +23,12 @@ union BF162x4
 template <uint32_t kHiddenSize>
 requires (kHiddenSize == 1024 || kHiddenSize == 2048)
 __global__ __launch_bounds__(kHiddenSize / kNumBf16sPerVector)
-void bf16_elementwise_add(const nv_bfloat16* __restrict__ a, nv_bfloat16* __restrict__ b)
+void bf16_elementwise_add(const nv_bfloat16* __restrict__ a, nv_bfloat16* __restrict__ b, const int* num_tokens_device)
 {
+    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+        return;
+    }
+
     const size_t idx =
         static_cast<size_t>(blockIdx.x) * kHiddenSize + threadIdx.x * kNumBf16sPerVector;
     auto* pb = reinterpret_cast<uint4*>(b + idx);
@@ -44,8 +48,13 @@ void bf16_elementwise_add(const nv_bfloat16* __restrict__ a, nv_bfloat16* __rest
 
 template <uint32_t kNumThreads>
 __global__ __launch_bounds__(kNumThreads)
-void bf16_elementwise_add(const nv_bfloat16* __restrict__ a, nv_bfloat16* __restrict__ b, size_t n)
+void bf16_elementwise_add(const nv_bfloat16* __restrict__ a, nv_bfloat16* __restrict__ b, size_t n,
+    uint32_t hidden_size, const int* num_tokens_device
+)
 {
+    if (num_tokens_device != nullptr) {
+        n = static_cast<size_t>(*num_tokens_device) * hidden_size;
+    }
     const size_t num_vec = n / kNumBf16sPerVector;
     const auto* pa = reinterpret_cast<const uint4*>(a);
     auto* pb = reinterpret_cast<uint4*>(b);
@@ -74,7 +83,7 @@ void bf16_elementwise_add(const nv_bfloat16* __restrict__ a, nv_bfloat16* __rest
 
 }
 
-void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t stream)
+void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t stream, const int* num_tokens_device)
 {
     assert(hidden && residual);
 
@@ -84,7 +93,8 @@ void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t strea
             constexpr uint32_t kNumThreads = 1024 / kNumBf16sPerVector;
             bf16_elementwise_add<1024><<<num_tokens, kNumThreads, 0, stream>>>(
                 static_cast<const nv_bfloat16*>(hidden.device_ptr),
-                static_cast<nv_bfloat16*>(residual.device_ptr)
+                static_cast<nv_bfloat16*>(residual.device_ptr),
+                num_tokens_device
             );
             break;
         }
@@ -92,7 +102,8 @@ void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t strea
             constexpr uint32_t kNumThreads = 2048 / kNumBf16sPerVector;
             bf16_elementwise_add<2048><<<num_tokens, kNumThreads, 0, stream>>>(
                 static_cast<const nv_bfloat16*>(hidden.device_ptr),
-                static_cast<nv_bfloat16*>(residual.device_ptr)
+                static_cast<nv_bfloat16*>(residual.device_ptr),
+                num_tokens_device
             );
             break;
         }
@@ -105,7 +116,9 @@ void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t strea
             bf16_elementwise_add<kNumThreads><<<num_blocks, kNumThreads, 0, stream>>>(
                 static_cast<const nv_bfloat16*>(hidden.device_ptr),
                 static_cast<nv_bfloat16*>(residual.device_ptr),
-                num_elements
+                num_elements,
+                hidden_size,
+                num_tokens_device
             );
         }
     }

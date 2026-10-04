@@ -12,7 +12,16 @@ CudaContext::CudaContext()
     try {
         CUBLAS_CHECK(cublasCreate(&cublas_));
         CUBLAS_CHECK(cublasSetStream(cublas_, stream_));
+        int device = 0;
+        int major = 0;
+        CUDA_CHECK(cudaGetDevice(&device));
+        CUDA_CHECK(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device));
+        cublas_workspace_.resize((major >= 9 ? 32 : 4) * 1024 * 1024);
+        CUBLAS_CHECK(cublasSetWorkspace(cublas_, cublas_workspace_.data(), cublas_workspace_.size()));
     } catch (...) {
+        if (cublas_ != nullptr) {
+            cublasDestroy(cublas_);
+        }
         cudaStreamDestroy(stream_);
         throw;
     }

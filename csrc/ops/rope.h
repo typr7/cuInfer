@@ -16,7 +16,8 @@ void rope(
     int k_size,
     int head_dim,
     /* int rotary_dim = head_dim */
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device = nullptr
 );
 
 }

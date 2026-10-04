@@ -24,6 +24,7 @@ struct Config
     // Serve a prompt prefix from the kv cache of an earlier request instead of
     // computing it again.
     bool enable_prefix_caching = true;
+    bool enable_cuda_graph = true;
 };
 
 }

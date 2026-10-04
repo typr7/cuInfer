@@ -24,6 +24,7 @@ class EngineConfig:
     max_num_scheduled_tokens: int = 8192
     max_num_seqs: int = 256
     enable_prefix_caching: bool = True
+    enable_cuda_graph: bool = True
 
     def __post_init__(self) -> None:
         if not 0 < self.gpu_memory_utilization <= 0.95:

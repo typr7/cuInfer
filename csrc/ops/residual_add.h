@@ -8,6 +8,6 @@
 namespace cuinfer::ops
 {
 
-void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t stream);
+void residual_add(TensorRef<2> hidden, TensorRef<2> residual, cudaStream_t stream, const int* num_tokens_device = nullptr);
 
 }

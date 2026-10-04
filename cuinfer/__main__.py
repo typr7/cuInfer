@@ -18,6 +18,7 @@ async def serve(args: argparse.Namespace) -> int:
         max_num_scheduled_tokens=args.max_num_scheduled_tokens,
         max_num_seqs=args.max_num_seqs,
         enable_prefix_caching=not args.disable_prefix_caching,
+        enable_cuda_graph=not args.disable_cuda_graph,
     )
     engine = await EngineClient.start(config)
     server = uvicorn.Server(uvicorn.Config(
@@ -56,6 +57,7 @@ def main() -> None:
     command.add_argument("--block-size", type=int, default=16)
     command.add_argument("--max-num-scheduled-tokens", type=int, default=8192)
     command.add_argument("--max-num-seqs", type=int, default=256)
+    command.add_argument("--disable-cuda-graph", action="store_true")
     command.add_argument(
         "--disable-prefix-caching",
         action="store_true",
@@ -70,6 +72,7 @@ def main() -> None:
             max_num_scheduled_tokens=args.max_num_scheduled_tokens,
             max_num_seqs=args.max_num_seqs,
             enable_prefix_caching=not args.disable_prefix_caching,
+            enable_cuda_graph=not args.disable_cuda_graph,
         )
     except ValueError as exc:
         parser.error(str(exc))

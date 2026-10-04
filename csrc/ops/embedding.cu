@@ -20,9 +20,14 @@ __global__ __launch_bounds__(kEmbeddingDim / kNumBf16sPerVector)
 void bf16_embedding(
     const int* __restrict__ token_ids,
     const nv_bfloat16* __restrict__ embedding_table,
-    nv_bfloat16* __restrict__ output
+    nv_bfloat16* __restrict__ output,
+    const int* num_tokens_device
 )
 {
+    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+        return;
+    }
+
     const auto token_id = static_cast<uint32_t>(token_ids[blockIdx.x]);
     const auto* input_u4
         = reinterpret_cast<const uint4*>(embedding_table + token_id * kEmbeddingDim);
@@ -35,7 +40,8 @@ void launch_embedding(
     const int* token_ids,
     TensorRef<2> embedding_table,
     TensorRef<2> output,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device
 )
 {
     constexpr uint32_t kNumThreads = kEmbeddingDim / kNumBf16sPerVector;
@@ -46,7 +52,8 @@ void launch_embedding(
     bf16_embedding<kEmbeddingDim><<<num_tokens, kNumThreads, 0, stream>>>(
         token_ids,
         static_cast<const nv_bfloat16*>(embedding_table.device_ptr),
-        static_cast<nv_bfloat16*>(output.device_ptr)
+        static_cast<nv_bfloat16*>(output.device_ptr),
+        num_tokens_device
     );
     CUDA_CHECK(cudaGetLastError());
 }
@@ -57,7 +64,8 @@ void embedding(
     const int* token_ids,
     TensorRef<2> embedding_table,
     TensorRef<2> output,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device
 )
 {
     assert(token_ids != nullptr && embedding_table && output);
@@ -65,11 +73,11 @@ void embedding(
     const int embedding_dim = embedding_table.shape[1];
     switch (embedding_dim) {
         case 1024: {
-            launch_embedding<1024>(token_ids, embedding_table, output, stream);
+            launch_embedding<1024>(token_ids, embedding_table, output, stream, num_tokens_device);
             break;
         }
         case 2048: {
-            launch_embedding<2048>(token_ids, embedding_table, output, stream);
+            launch_embedding<2048>(token_ids, embedding_table, output, stream, num_tokens_device);
             break;
         }
         default:

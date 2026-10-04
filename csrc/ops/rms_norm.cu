@@ -21,9 +21,14 @@ void bf16_rms_norm(
     const nv_bfloat16* input,
     const nv_bfloat16* weights,
     nv_bfloat16* output,
-    float eps
+    float eps,
+    const int* num_tokens_device
 )
 {
+    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+        return;
+    }
+
     const uint32_t tid = threadIdx.x;
     const uint32_t lane_id = tid & (kNumThreadsPerWarp - 1);
     const uint32_t warp_id = tid / kNumThreadsPerWarp;
@@ -73,7 +78,8 @@ void launch_kernel(
     TensorRef<1> weights,
     TensorRef<2> output,
     float eps,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device
 )
 {
     constexpr uint32_t kNumThreads = kHiddenSize / kNumBf16sPerVector;
@@ -88,7 +94,8 @@ void launch_kernel(
         static_cast<const nv_bfloat16*>(input.device_ptr),
         static_cast<const nv_bfloat16*>(weights.device_ptr),
         static_cast<nv_bfloat16*>(output.device_ptr),
-        eps
+        eps,
+        num_tokens_device
     );
     CUDA_CHECK(cudaGetLastError());
 }
@@ -100,7 +107,8 @@ void rms_norm(
     TensorRef<1> weights,
     TensorRef<2> output,
     float eps,
-    cudaStream_t stream
+    cudaStream_t stream,
+    const int* num_tokens_device
 )
 {
     assert(input && weights && output);
@@ -108,12 +116,12 @@ void rms_norm(
     const int hidden_size = input.shape[1];
     switch (hidden_size) {
         case 1024: {
-            launch_kernel<1024>(input, weights, output, eps, stream);
+            launch_kernel<1024>(input, weights, output, eps, stream, num_tokens_device);
             break;
         }
 
         case 2048: {
-            launch_kernel<2048>(input, weights, output, eps, stream);
+            launch_kernel<2048>(input, weights, output, eps, stream, num_tokens_device);
             break;
         }
 

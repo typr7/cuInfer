@@ -3,6 +3,8 @@
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 
+#include "cuda/cuda_device_buffer.h"
+
 
 namespace cuinfer
 {
@@ -36,6 +38,7 @@ public:
 private:
     cudaStream_t stream_ = nullptr;
     cublasHandle_t cublas_ = nullptr;
+    CudaDeviceBuffer cublas_workspace_;
 };
 
 }
