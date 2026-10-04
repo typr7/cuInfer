@@ -1,7 +1,11 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include "model/model_config.h"
-#include "model/model_weights.h"
+#include "model/layers/attention.h"
+#include "model/layers/mlp.h"
 #include "cuda/cuda_context.h"
 #include "executor/forward_batch.h"
 #include "executor/kv_cache.h"
@@ -12,10 +16,20 @@
 namespace cuinfer
 {
 
+struct DecoderLayer
+{
+    Tensor<1> input_layernorm;
+    Attention attn;
+    Tensor<1> post_attention_layernorm;
+    std::unique_ptr<FeedForward> ffn;
+    CudaDeviceBuffer norm_data;
+};
+
 class CausalLM
 {
 public:
-    CausalLM(const ModelConfig& config, ModelWeights&& weights);
+    CausalLM(const ModelConfig& config, const std::filesystem::path& model_dir,
+             const CudaContext& context);
     ~CausalLM() noexcept = default;
 
     void forward(
@@ -65,11 +79,13 @@ private:
 
 private:
     ModelConfig config_;
-    ModelWeights weights_;
+    Tensor<2> embed_tokens_;
+    Tensor<1> norm_;
+    CudaDeviceBuffer embed_data_;
+    CudaDeviceBuffer norm_data_;
+    Linear lm_head_;
     RopeCache rope_;
-
-    int q_size_;
-    int kv_size_;
+    std::vector<DecoderLayer> layers_;
 };
 
 }

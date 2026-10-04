@@ -1,27 +1,58 @@
-#include <cmath>
+#include <format>
 
 #include "model/causal_lm.h"
+#include "common/util.h"
 #include "ops/embedding.h"
-#include "ops/paged_attention.h"
-#include "ops/projection.h"
 #include "ops/rms_norm.h"
-#include "ops/qk_norm_rope_fused.h"
-#include "ops/rope.h"
 #include "ops/residual_add.h"
-#include "ops/swiglu.h"
-#include "ops/unified_kv_cache_update.h"
 
 
 namespace cuinfer
 {
 
-CausalLM::CausalLM(const ModelConfig& config, ModelWeights&& weights)
+CausalLM::CausalLM(const ModelConfig& config, const std::filesystem::path& model_dir,
+                   const CudaContext& context)
     : config_(config),
-      weights_(std::move(weights)),
-      rope_(RopeCache::create(config)),
-      q_size_(config.num_attention_heads * config.head_dim),
-      kv_size_(config.num_kv_heads * config.head_dim)
+      rope_(RopeCache::create(config))
 {
+    const Checkpoint checkpoint(model_dir);
+    const auto& embed = checkpoint.get("model.embed_tokens.weight", config.dtype,
+                                       {config.vocab_size, config.hidden_size});
+    embed_data_.resize(static_cast<std::size_t>(config.vocab_size) * config.hidden_size
+                       * dtype_byte_size(config.dtype));
+    upload_slice(embed, 0, 0, config.vocab_size, embed_data_.data());
+    embed_tokens_ = make_tensor<2>(embed_data_.data(), config.dtype,
+                                   {config.vocab_size, config.hidden_size});
+
+    const std::size_t norm_bytes = config.hidden_size * dtype_byte_size(config.dtype);
+    norm_data_.resize(norm_bytes);
+    upload_slice(checkpoint.get("model.norm.weight", config.dtype, {config.hidden_size}),
+                 0, 0, config.hidden_size, norm_data_.data());
+    norm_ = make_tensor<1>(norm_data_.data(), config.dtype, {config.hidden_size});
+    lm_head_ = config.tie_word_embeddings
+        ? Linear::tied(embed_tokens_)
+        : Linear::load(checkpoint, {{"lm_head", config.vocab_size}}, config.hidden_size,
+                       Parallel::kReplicated);
+
+    layers_.reserve(config.num_hidden_layers);
+    for (int i = 0; i < config.num_hidden_layers; i++) {
+        const std::string prefix = std::format("model.layers.{}", i);
+        DecoderLayer layer;
+        const std::size_t post_offset = align_up<256>(norm_bytes);
+        layer.norm_data.resize(post_offset + norm_bytes);
+        auto* base = layer.norm_data.data<std::byte>();
+        upload_slice(checkpoint.get(prefix + ".input_layernorm.weight", config.dtype,
+                                    {config.hidden_size}), 0, 0, config.hidden_size, base);
+        upload_slice(checkpoint.get(prefix + ".post_attention_layernorm.weight", config.dtype,
+                                    {config.hidden_size}), 0, 0, config.hidden_size, base + post_offset);
+        layer.input_layernorm = make_tensor<1>(base, config.dtype, {config.hidden_size});
+        layer.post_attention_layernorm = make_tensor<1>(base + post_offset, config.dtype,
+                                                       {config.hidden_size});
+        layer.attn = Attention::load(checkpoint, prefix + ".self_attn", i, config, context, rope_);
+        // TODO: SparseMoE
+        layer.ffn = std::make_unique<DenseMLP>(DenseMLP::load(checkpoint, prefix + ".mlp", config));
+        layers_.push_back(std::move(layer));
+    }
 }
 
 void CausalLM::forward(
@@ -33,7 +64,7 @@ void CausalLM::forward(
 {
     ops::embedding(
         batch.token_ids,
-        weights_.embed_tokens,
+        embed_tokens_,
         workspace.residual,
         context.stream(),
         batch.num_tokens_device
@@ -65,18 +96,13 @@ void CausalLM::compute_logits(
 
     ops::rms_norm(
         workspace.sampling_hidden,
-        weights_.norm,
+        norm_,
         workspace.sampling_hidden,
         config_.rms_norm_eps,
         context.stream()
     );
 
-    ops::projection(
-        workspace.sampling_hidden,
-        weights_.lm_head,
-        workspace.logits,
-        context.cublas()
-    );
+    lm_head_.forward(workspace.sampling_hidden, workspace.logits, context, workspace);
 }
 
 void CausalLM::forward_graph_segment(
@@ -89,7 +115,7 @@ void CausalLM::forward_graph_segment(
 {
     if (segment == 0) {
         ops::embedding(
-            batch.token_ids, weights_.embed_tokens, workspace.residual,
+            batch.token_ids, embed_tokens_, workspace.residual,
             context.stream(), batch.num_tokens_device
         );
     } else {
@@ -108,53 +134,16 @@ void CausalLM::pre_attention(
     int layer
 ) const
 {
-    const LayerWeights& layer_weights = weights_.layers.at(layer);
+    const DecoderLayer& decoder = layers_.at(layer);
     ops::rms_norm(
         workspace.residual,
-        layer_weights.input_layernorm,
+        decoder.input_layernorm,
         workspace.hidden,
         config_.rms_norm_eps,
         context.stream(),
         batch.num_tokens_device
     );
-    ops::projection(workspace.hidden, layer_weights.qkv_proj, workspace.qkv, context.cublas());
-
-    // logical reshape: [T, Q/K] -> [T, H_Q/K, D]
-
-    if (config_.has_qk_norm) {
-        ops::qk_norm_rope(
-            workspace.qkv,
-            layer_weights.q_norm,
-            layer_weights.k_norm,
-            rope_.view,
-            batch.positions,
-            q_size_,
-            kv_size_,
-            config_.head_dim,
-            config_.rms_norm_eps,
-            context.stream(),
-            batch.num_tokens_device
-        );
-    } else {
-        ops::rope(
-            workspace.qkv,
-            rope_.view,
-            batch.positions,
-            q_size_,
-            kv_size_,
-            config_.head_dim,
-            context.stream(),
-            batch.num_tokens_device
-        );
-    }
-
-    ops::unified_kv_cache_update(
-        kv_cache.k(layer),
-        kv_cache.v(layer),
-        workspace.qkv,
-        batch.slot_mapping,
-        context.stream()
-    );
+    decoder.attn.prepare(context, batch, kv_cache, workspace);
 }
 
 void CausalLM::forward_attention(
@@ -165,15 +154,7 @@ void CausalLM::forward_attention(
     int layer
 ) const
 {
-    ops::paged_attention(
-        workspace.qkv,
-        kv_cache.k(layer),
-        kv_cache.v(layer),
-        workspace.attn_out,
-        batch,
-        kv_cache.block_size,
-        context.stream()
-    );
+    layers_.at(layer).attn.attend(context, batch, kv_cache, workspace);
 }
 
 void CausalLM::post_attention(
@@ -183,31 +164,18 @@ void CausalLM::post_attention(
     int layer
 ) const
 {
-    const LayerWeights& layer_weights = weights_.layers.at(layer);
-    ops::projection(workspace.attn_out, layer_weights.o_proj, workspace.hidden, context.cublas());
-
+    const DecoderLayer& decoder = layers_.at(layer);
+    decoder.attn.project(context, batch, workspace);
     ops::residual_add(workspace.hidden, workspace.residual, context.stream(), batch.num_tokens_device);
-
     ops::rms_norm(
         workspace.residual,
-        layer_weights.post_attn_layernorm,
+        decoder.post_attention_layernorm,
         workspace.hidden,
         config_.rms_norm_eps,
         context.stream(),
         batch.num_tokens_device
     );
-
-    ops::projection(
-        workspace.hidden,
-        layer_weights.gate_up_proj,
-        workspace.gate_up,
-        context.cublas()
-    );
-
-    ops::swiglu(workspace.gate_up, context.stream(), batch.num_tokens_device); // -> gated
-
-    ops::projection(workspace.gated, layer_weights.down_proj, workspace.hidden, context.cublas());
-
+    decoder.ffn->forward(context, batch, workspace);
     ops::residual_add(workspace.hidden, workspace.residual, context.stream(), batch.num_tokens_device);
 }
 

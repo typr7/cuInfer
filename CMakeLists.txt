@@ -34,7 +34,11 @@ add_library(cuinfer_core STATIC
 
     csrc/model/causal_lm.cpp
     csrc/model/model_config.cpp
-    csrc/model/model_weights.cpp
+    csrc/model/checkpoint.cpp
+    csrc/model/layers/linear.cpp
+    csrc/model/layers/attention.cpp
+    csrc/model/layers/mlp.cpp
+    csrc/model/layers/moe.cpp
     csrc/model/rope_cache.cpp
 
     csrc/ops/embedding.cu

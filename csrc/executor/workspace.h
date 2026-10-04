@@ -19,6 +19,8 @@ struct WorkspaceView
     Tensor<2> gated;
     Tensor<2> sampling_hidden; // [S, H]
     Tensor<2> logits; // [S, vocab_len]
+
+    // TODO: quant and MoE
 };
 
 struct Workspace

@@ -21,10 +21,7 @@ struct ModelRunner::Impl
     explicit Impl(const Config& config)
         : config(config),
           model_config(ModelConfig::load(config.model_path)),
-          model(model_config, ModelWeights::load_from_safetensors(
-              std::filesystem::path(config.model_path) / "model.safetensors",
-              model_config
-          )),
+          model(model_config, config.model_path, context),
           sampler(config.max_num_seqs, model_config.vocab_size),
           workspace(Workspace::create(
               model_config,
