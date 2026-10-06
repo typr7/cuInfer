@@ -61,6 +61,7 @@ uint32_t pack_float2(float low, float high)
 }
 
 template <typename ToType, typename FromType>
+__device__ __forceinline__
 ToType& as(FromType* p)
 {
     return *reinterpret_cast<ToType*>(p);

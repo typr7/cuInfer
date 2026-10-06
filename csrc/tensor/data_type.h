@@ -61,15 +61,16 @@ inline constexpr std::string_view dtype_string(DataType dtype) noexcept
 template <typename T>
 consteval DataType dtype_of() noexcept
 {
-    if constexpr (std::is_same_v<T, __nv_bfloat16>) {
+    using U = std::remove_const_t<T>;
+    if constexpr (std::is_same_v<U, __nv_bfloat16>) {
         return DataType::kBf16;
-    } else if constexpr (std::is_same_v<T, __half>) {
+    } else if constexpr (std::is_same_v<U, __half>) {
         return DataType::kFp16;
-    } else if constexpr (std::is_same_v<T, std::int32_t>) {
+    } else if constexpr (std::is_same_v<U, std::int32_t>) {
         return DataType::kInt32;
-    } else if constexpr (std::is_same_v<T, std::int8_t>) {
+    } else if constexpr (std::is_same_v<U, std::int8_t>) {
         return DataType::kInt8;
-    } else if constexpr (std::is_same_v<T, float>) {
+    } else if constexpr (std::is_same_v<U, float>) {
         return DataType::kFp32;
     } else {
         return DataType::kUnsupported;

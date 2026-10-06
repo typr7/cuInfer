@@ -12,11 +12,20 @@ namespace cuinfer::ops
 namespace
 {
 
+constexpr uint32_t kNumThreads = 128;
+constexpr uint32_t kNumElemsPerBlock = 512;
+
 union Bit128
 {
     uint4 vec;
     int64_t i64x2[2];
     nv_bfloat16 bf16x8[8];
+};
+
+union Bit64
+{
+    uint2 vec;
+    nv_bfloat16 bf16x4[4];
 };
 
 __device__ __forceinline__
@@ -35,6 +44,103 @@ void swap(uint32_t& a, uint32_t& b)
     b = tmp;
 }
 
+__global__ __launch_bounds__(kNumThreads)
+void bf16_qk_norm_rope_fused_packedqkv_perheadd128(
+    __nv_bfloat16* __restrict__ qkv,
+    const __nv_bfloat16* __restrict__ q_weights,
+    const __nv_bfloat16* __restrict__ k_weights,
+    const float* __restrict__ cos_sin,
+    const int* __restrict__ positions,
+    uint32_t stride,
+    uint32_t q_size,
+    float eps,
+    const int* num_tokens
+)
+{
+    if (num_tokens != nullptr && blockIdx.x >= *num_tokens) {
+        return;
+    }
+
+    constexpr uint32_t kHeadDim = 128;
+    constexpr uint32_t kNumElemsPerThread = kNumElemsPerBlock / kNumThreads;
+    const uint32_t tid = threadIdx.x;
+    const uint32_t lane_id = tid % kNumThreadsPerWarp;
+
+    auto* head_u2 = reinterpret_cast<uint2*>(
+        qkv
+        + blockIdx.x * stride
+        + blockIdx.y * kNumElemsPerBlock
+        + tid * kNumElemsPerThread
+    );
+
+    Bit64 head{
+        .vec = *head_u2
+    };
+
+    Bit64 weights{
+        .vec = as<const uint2>(
+            blockIdx.y * kNumElemsPerBlock < q_size
+            ? &q_weights[lane_id * kNumElemsPerThread]
+            : &k_weights[lane_id * kNumElemsPerThread]
+        )
+    };
+
+    float sum0 = 0.f;
+    float sum1 = 0.f;
+    #pragma unroll
+    for (uint32_t i = 0; i < kNumElemsPerThread; i += 2) {
+        const float val0 = __bfloat162float(head.bf16x4[i]);
+        const float val1 = __bfloat162float(head.bf16x4[i + 1]);
+        sum0 = fmaf(val0, val0, sum0);
+        sum1 = fmaf(val1, val1, sum1);
+    }
+
+    sum0 = warp_reduce_sum(sum0 + sum1);
+
+    float factor = 0.f;
+    if (lane_id == 0) {
+        factor = rsqrtf(sum0 * (1.f / kHeadDim) + eps);
+    }
+
+    factor = __shfl_sync(0xffffffff, factor, 0);
+
+    #pragma unroll
+    for (uint32_t i = 0; i < kNumElemsPerThread; i++) {
+        head.bf16x4[i] = __float2bfloat16(
+            factor * __bfloat162float(head.bf16x4[i]) * __bfloat162float(weights.bf16x4[i])
+        );
+    }
+
+    const auto pos = static_cast<uint32_t>(positions[blockIdx.x]);
+    const auto* cos_sin_f4 = reinterpret_cast<const float4*>(cos_sin + pos * kHeadDim);
+
+    const uint32_t group = lane_id >> 4;
+    const uint32_t group_lane = lane_id & 0b1111;
+
+    const float4 cs[2] = {
+        cos_sin_f4[2 * group_lane],
+        cos_sin_f4[2 * group_lane + 1]
+    };
+    const auto* cs_f = reinterpret_cast<const float*>(cs);
+    const Bit64 peer{
+        .vec = make_uint2(
+            __shfl_xor_sync(0xffffffff, head.vec.x, 16),
+            __shfl_xor_sync(0xffffffff, head.vec.y, 16)
+        )
+    };
+
+    #pragma unroll
+    for (uint32_t i = 0; i < kNumElemsPerThread; i++) {
+        const float self_val = __bfloat162float(head.bf16x4[i]);
+        const float peer_val = __bfloat162float(peer.bf16x4[i]);
+        const float cos = cs_f[2 * i];
+        const float sin = group == 0 ? cs_f[2 * i + 1] : -cs_f[2 * i + 1];
+        head.bf16x4[i] = __float2bfloat16(self_val * cos - peer_val * sin);
+    }
+
+    *head_u2 = head.vec;
+}
+
 __global__ __launch_bounds__(128) // kHeadsPerBlock * kHeadDim / kNumBf16sPerVector = 8 * 128 / 8
 void bf16_qk_norm_rope_fused_packedqkv_q2048k1024d128(
     nv_bfloat16* __restrict__ qkv,
@@ -44,10 +150,10 @@ void bf16_qk_norm_rope_fused_packedqkv_q2048k1024d128(
     const int* __restrict__ positions,
     uint32_t stride,
     float eps,
-    const int* num_tokens_device
+    const int* num_tokens
 )
 {
-    if (num_tokens_device != nullptr && blockIdx.x >= *num_tokens_device) {
+    if (num_tokens != nullptr && blockIdx.x >= *num_tokens) {
         return;
     }
 
@@ -169,18 +275,16 @@ void qk_norm_rope(
     const uint32_t num_tokens = static_cast<uint32_t>(qkv.shape[0]);
     const uint32_t stride = static_cast<uint32_t>(qkv.stride[0]);
     
-    if (q_size == 2048 && k_size == 1024 && head_dim == 128) {
-        constexpr uint32_t kNumThreads = 128;
-        constexpr uint32_t kNumBlocksPerToken = 3;
-
-        const dim3 grid_size(num_tokens, kNumBlocksPerToken);
-        bf16_qk_norm_rope_fused_packedqkv_q2048k1024d128<<<grid_size, kNumThreads, 0, stream>>>(
-            static_cast<nv_bfloat16*>(qkv.device_ptr),
-            static_cast<const nv_bfloat16*>(q_weights.device_ptr),
-            static_cast<const nv_bfloat16*>(k_weights.device_ptr),
-            static_cast<const float*>(rope_cache.device_ptr),
+    if (q_size % kNumElemsPerBlock == 0 && k_size % kNumElemsPerBlock == 0 && head_dim == 128) {
+        const dim3 grid(num_tokens, (q_size + k_size) / kNumElemsPerBlock);
+        bf16_qk_norm_rope_fused_packedqkv_perheadd128<<<grid, kNumThreads, 0, stream>>>(
+            qkv.data<__nv_bfloat16>(),
+            q_weights.data<const __nv_bfloat16>(),
+            k_weights.data<const __nv_bfloat16>(),
+            rope_cache.data<const float>(),
             positions,
-            static_cast<uint32_t>(stride),
+            stride,
+            q_size,
             eps,
             num_tokens_device
         );
