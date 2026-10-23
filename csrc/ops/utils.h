@@ -20,6 +20,12 @@ union BF16x8
     nv_bfloat16 bf16x8[8];
 };
 
+__host__ __device__
+constexpr uint32_t cdiv(uint32_t a, uint32_t b)
+{
+    return (a + b - 1) / b;
+}
+
 __device__ __forceinline__
 uint32_t cvta_shared(const void* smem)
 {
@@ -29,7 +35,7 @@ uint32_t cvta_shared(const void* smem)
 template <uint32_t kWidth = 32>
 requires (2 <= kWidth && kWidth <= 32 && std::has_single_bit(kWidth))
 __device__ __forceinline__
-float warp_reduce_sum(float val)
+float warp_butterfly_reduce_sum(float val)
 {
     #pragma unroll
     for (uint32_t i = (kWidth >> 1); i > 0; i >>= 1) {
@@ -39,13 +45,35 @@ float warp_reduce_sum(float val)
 }
 
 __device__ __forceinline__
-float warp_reduce_max(float val)
+float warp_butterfly_reduce_max(float val)
 {
     val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, 16));
     val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, 8));
     val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, 4));
     val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, 2));
     val = fmaxf(val, __shfl_xor_sync(0xffffffff, val, 1));
+    return val;
+}
+
+__device__ __forceinline__
+float warp_reduce_sum(float val)
+{
+    val += __shfl_down_sync(0xffffffff, val, 16);
+    val += __shfl_down_sync(0xffffffff, val, 8);
+    val += __shfl_down_sync(0xffffffff, val, 4);
+    val += __shfl_down_sync(0xffffffff, val, 2);
+    val += __shfl_down_sync(0xffffffff, val, 1);
+    return val;
+}
+
+__device__ __forceinline__
+float warp_reduce_max(float val)
+{
+    val = fmaxf(val, __shfl_down_sync(0xffffffff, val, 16));
+    val = fmaxf(val, __shfl_down_sync(0xffffffff, val, 8));
+    val = fmaxf(val, __shfl_down_sync(0xffffffff, val, 4));
+    val = fmaxf(val, __shfl_down_sync(0xffffffff, val, 2));
+    val = fmaxf(val, __shfl_down_sync(0xffffffff, val, 1));
     return val;
 }
 

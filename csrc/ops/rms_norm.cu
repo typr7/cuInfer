@@ -51,7 +51,7 @@ void bf16_rms_norm(
         sum0 = fmaf(val0, val0, sum0);
         sum1 = fmaf(val1, val1, sum1);
     }
-    float sum_val = warp_reduce_sum(sum0 + sum1);
+    float sum_val = warp_butterfly_reduce_sum(sum0 + sum1);
 
     if (lane_id == 0) {
         smem[warp_id] = sum_val;
@@ -59,7 +59,7 @@ void bf16_rms_norm(
     __syncthreads();
     
     sum_val = lane_id < kNumWarps ? smem[lane_id] : 0.f;
-    sum_val = warp_reduce_sum<kNumWarps>(sum_val);
+    sum_val = warp_butterfly_reduce_sum<kNumWarps>(sum_val);
     float factor = lane_id == 0 ? rsqrtf(sum_val * (1.f / kHiddenSize) + eps) : 0.f;
     factor = __shfl_sync(0xffffffff, factor, 0);
 

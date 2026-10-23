@@ -47,10 +47,12 @@ add_library(cuinfer_core STATIC
     csrc/ops/qk_norm_rope_fused.cu
     csrc/ops/qk_norm.cu
     csrc/ops/residual_add.cu
+    csrc/ops/residual_rms_norm_fused.cu
     csrc/ops/rms_norm.cu
     csrc/ops/rope.cu
     csrc/ops/sampler.cu
     csrc/ops/swiglu.cu
+    csrc/ops/topk_gating_softmax.cu
     csrc/ops/unified_kv_cache_update.cu
 )
 

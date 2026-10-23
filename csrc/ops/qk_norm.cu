@@ -60,7 +60,7 @@ void bf16_qk_norm_packedqkv_q2048k1024d128(
         sum0 = fmaf(val0, val0, sum0);
         sum1 = fmaf(val1, val1, sum1);
     }
-    const float sum_val = warp_reduce_sum<kNumThreadsPerHead>(sum0 + sum1);
+    const float sum_val = warp_butterfly_reduce_sum<kNumThreadsPerHead>(sum0 + sum1);
     
     float factor = head_lane == 0 ? rsqrtf(sum_val * (1.f / kHeadDim) + eps) : 0.f;
     factor = __shfl_sync(0xffffffff, factor, 0, kNumThreadsPerHead);
