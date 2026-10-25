@@ -20,7 +20,15 @@ struct WorkspaceView
     Tensor<2> sampling_hidden; // [S, H]
     Tensor<2> logits; // [S, vocab_len]
 
-    // TODO: quant and MoE
+    // MoE
+    Tensor<2> router_logits; // [T, E]
+    Tensor<2> topk_weights; // [T, K], FP32
+    Tensor<2> topk_ids; // [T, K], INT32
+    Tensor<1> expert_counts; // [E], INT32
+    Tensor<2> moe_gate_up; // [T * K, 2 * I_moe]
+    Tensor<2> moe_gated; // [T * K, I_moe], stride 2 * I_moe
+
+    // TODO: quant
 };
 
 struct Workspace
@@ -43,6 +51,14 @@ private:
     Tensor<2> gated_;
     Tensor<2> sampling_hidden_;
     Tensor<2> logits_;
+
+    // MoE
+    Tensor<2> router_logits_;
+    Tensor<2> topk_weights_;
+    Tensor<2> topk_ids_;
+    Tensor<1> expert_counts_;
+    Tensor<2> moe_gate_up_;
+    Tensor<2> moe_gated_;
 
     CudaDeviceBuffer data_;
 };

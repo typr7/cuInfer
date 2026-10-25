@@ -1,10 +1,13 @@
+#include <algorithm>
 #include <format>
 
 #include "model/causal_lm.h"
 #include "common/util.h"
+#include "model/layers/moe.h"
 #include "ops/embedding.h"
 #include "ops/rms_norm.h"
 #include "ops/residual_add.h"
+#include "ops/residual_rms_norm_fused.h"
 
 
 namespace cuinfer
@@ -49,8 +52,14 @@ CausalLM::CausalLM(const ModelConfig& config, const std::filesystem::path& model
         layer.post_attention_layernorm = make_tensor<1>(base + post_offset, config.dtype,
                                                        {config.hidden_size});
         layer.attn = Attention::load(checkpoint, prefix + ".self_attn", i, config, context, rope_);
-        // TODO: SparseMoE
-        layer.ffn = std::make_unique<DenseMLP>(DenseMLP::load(checkpoint, prefix + ".mlp", config));
+        if (config.moe && config.moe->num_experts > 0
+            && (i + 1) % config.moe->decoder_sparse_step == 0
+            && std::find(config.moe->mlp_only_layers.begin(), config.moe->mlp_only_layers.end(), i)
+                == config.moe->mlp_only_layers.end()) {
+            layer.ffn = std::make_unique<SparseMoE>(SparseMoE::load(checkpoint, prefix + ".mlp", config));
+        } else {
+            layer.ffn = std::make_unique<DenseMLP>(DenseMLP::load(checkpoint, prefix + ".mlp", config));
+        }
         layers_.push_back(std::move(layer));
     }
 }
@@ -166,11 +175,10 @@ void CausalLM::post_attention(
 {
     const DecoderLayer& decoder = layers_.at(layer);
     decoder.attn.project(context, batch, workspace);
-    ops::residual_add(workspace.hidden, workspace.residual, context.stream(), batch.num_tokens_device);
-    ops::rms_norm(
+    ops::residual_rms_norm_fused(
+        workspace.hidden,
         workspace.residual,
         decoder.post_attention_layernorm,
-        workspace.hidden,
         config_.rms_norm_eps,
         context.stream(),
         batch.num_tokens_device

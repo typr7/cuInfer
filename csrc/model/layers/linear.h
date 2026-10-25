@@ -49,6 +49,8 @@ public:
     void forward(TensorRef<2> in, TensorRef<2> out, const int* sorted_token_ids,
                  const int* expert_ids, const CudaContext&, const WorkspaceView&) const;
 
+    TensorRef<3> weight() const { return weight_; }
+
 private:
     Tensor<3> weight_; // [E_local, N, K]
     CudaDeviceBuffer data_;

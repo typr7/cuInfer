@@ -19,11 +19,24 @@ void from_json(const nlohmann::json& j, RopeScaling& r)
     r.original_max_position_embeddings = j.at("original_max_position_embeddings").get<int>();
 }
 
+void from_json(const nlohmann::json& j, MoEConfig& moe)
+{
+    moe.num_experts = j.at("num_experts").get<int>();
+    moe.intermediate_size = j.at("moe_intermediate_size").get<int>();
+    moe.top_k = j.at("num_experts_per_tok").get<int>();
+    moe.norm_topk_prob = j.at("norm_topk_prob").get<bool>();
+    moe.decoder_sparse_step = j.at("decoder_sparse_step").get<int>();
+    moe.mlp_only_layers = j.at("mlp_only_layers").get<std::vector<int>>();
+}
+
 void from_json(const nlohmann::json& j, ModelConfig& cfg)
 {
     const auto arch = j.at("architectures").at(0).get<std::string>();
     if (arch == "Qwen3ForCausalLM") {
         cfg.arch = ModelArch::kQwen3;
+        cfg.has_qk_norm = true;
+    } else if (arch == "Qwen3MoeForCausalLM") {
+        cfg.arch = ModelArch::kQwen3Moe;
         cfg.has_qk_norm = true;
     } else if (arch == "LlamaForCausalLM") {
         cfg.arch = ModelArch::kLlama;
@@ -31,6 +44,10 @@ void from_json(const nlohmann::json& j, ModelConfig& cfg)
     } else {
         cfg.arch = ModelArch::kUnsupported;
     }
+
+    cfg.moe = cfg.arch == ModelArch::kQwen3Moe
+        ? std::make_optional(j.get<MoEConfig>())
+        : std::nullopt;
 
     const auto dtype = j.at("torch_dtype").get<std::string>();
     if (dtype == "bfloat16") {

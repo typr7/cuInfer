@@ -15,6 +15,7 @@ enum class ModelArch
     kUnsupported,
     kLlama,  // Llama-3.2-1B
     kQwen3,  // Qwen3-0.6B
+    kQwen3Moe,  // Qwen3-30B-A3B
 };
 
 // Llama 3 rescales the low-frequency RoPE bands so the model generalizes past
@@ -25,6 +26,16 @@ struct RopeScaling
     float low_freq_factor;
     float high_freq_factor;
     int original_max_position_embeddings;
+};
+
+struct MoEConfig
+{
+    int num_experts;
+    int intermediate_size;
+    int top_k;
+    bool norm_topk_prob;
+    int decoder_sparse_step;
+    std::vector<int> mlp_only_layers;
 };
 
 struct ModelConfig
@@ -57,6 +68,7 @@ struct ModelConfig
     std::vector<int> eos_token_ids;
 
     std::optional<RopeScaling> rope_scaling;
+    std::optional<MoEConfig> moe;
 
     static ModelConfig load(const std::filesystem::path& path);
 };
